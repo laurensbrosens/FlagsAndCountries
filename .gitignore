@@ -1,2 +1,4 @@
 map_mode_stats.json
 flag_mode_stats.json
+flag_cache/
+*.json
