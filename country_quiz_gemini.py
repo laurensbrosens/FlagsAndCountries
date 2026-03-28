@@ -18,7 +18,7 @@ STATS_IGNORE_CHANCE = 0.5      # 50% chance that stats don't influence the count
 WEIGHT_CORRECT_PENALTY = 0.75  # Hardcoded max penalty (-25% compared to random base of 1.0)
 WEIGHT_MISS_BONUS = 1.25       # Hardcoded max bonus (+25% compared to random base of 1.0)
 MIN_CORRECT_GUESSES = 3        # Penalty only applies when a country has been guessed correctly >= 3 times
-NUM_OPTIONS = 6
+NUM_OPTIONS = 20
 
 class ModeSelection:
     def __init__(self, root):
@@ -115,7 +115,7 @@ class CountryGuessingGame:
         self.choice_buttons = []
         for i in range(NUM_OPTIONS):
             btn = tk.Button(self.btn_frame, text="", font=("Arial", 14))
-            btn.grid(row=i//2, column=i%2, padx=5, pady=10)
+            btn.grid(row=i//6, column=i%6, padx=5, pady=10)
             self.choice_buttons.append(btn)
             
         self.result_label = tk.Label(bottom_frame, text="", font=("Arial", 16, "bold"))
