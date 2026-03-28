@@ -42,10 +42,10 @@ class ModeSelection:
 class CountryGuessingGame:
     def __init__(self, root, mode):
         self.root = root
-        self.mode = mode  # 'map' or 'flag'
+        self.mode = mode
         self.stats_file = f"{mode}_mode_stats.json"
         
-        self.root.geometry("800x850" if mode == 'map' else "400x500")
+        self.root.geometry("1100x850" if mode == 'map' else "400x500")
         self.root.title(f"Country Guessing Game - {'Map' if mode == 'map' else 'Flag'} Mode")
         
         self.score = 0
@@ -58,6 +58,7 @@ class CountryGuessingGame:
         self.BORDER_COLOR = "#ffffff"
         self.MARKER_COLOR = "#ff4444"
         self.ZOOM_PADDING = 25.0
+        self.MAP_WIDTH_RATIO = 2.85
         self.CHAR_DENSITY = 1.5
         
         # Zoom/pan state
@@ -75,6 +76,116 @@ class CountryGuessingGame:
         
         self.setup_ui()
         self.next_round()
+
+    def setup_ui(self):
+        top_frame = tk.Frame(self.root)
+        top_frame.pack(fill="x", padx=20, pady=10)
+        
+        mode_label = "Map Mode" if self.mode == 'map' else "Flag Mode"
+        self.score_label = tk.Label(top_frame, text=f"Score: 0 / 0 | {mode_label}", 
+                                   font=("Arial", 16, "bold"))
+        self.score_label.pack(anchor="ne")
+        
+        if self.mode == 'map':
+            self.fig, self.ax = plt.subplots(figsize=(10, 4.5))
+            self.fig.patch.set_facecolor(self.OCEAN_COLOR)
+            self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+            
+            self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+            self.canvas_widget = self.canvas.get_tk_widget()
+            self.canvas_widget.pack(fill="both", expand=True, padx=20, pady=5)
+            
+            self.canvas_widget.bind("<MouseWheel>", self.on_mouse_wheel)
+            self.canvas_widget.bind("<ButtonPress-1>", self.on_mouse_press)
+            self.canvas_widget.bind("<B1-Motion>", self.on_mouse_drag)
+            self.canvas_widget.bind("<ButtonRelease-1>", self.on_mouse_release)
+        
+        self.flag_label = tk.Label(self.root)
+        self.flag_label.pack(pady=10)
+        
+        bottom_frame = tk.Frame(self.root)
+        bottom_frame.pack(fill="x", pady=10)
+        
+        self.btn_frame = tk.Frame(bottom_frame)
+        self.btn_frame.pack()
+        
+        self.choice_buttons = []
+        for i in range(4):
+            btn = tk.Button(self.btn_frame, text="", font=("Arial", 14))
+            btn.grid(row=i//2, column=i%2, padx=5, pady=10)
+            self.choice_buttons.append(btn)
+            
+        self.result_label = tk.Label(bottom_frame, text="", font=("Arial", 16, "bold"))
+        self.result_label.pack(pady=5)
+        
+        self.next_button = tk.Button(bottom_frame, text="Next Round ➔", font=("Arial", 14, "bold"), 
+                                     bg="#4CAF50", fg="white", state=tk.DISABLED, command=self.next_round)
+        self.next_button.pack(pady=10)
+
+    def get_view_extents(self):
+        half_height = self.ZOOM_PADDING / self.zoom_level
+        half_width = half_height * self.MAP_WIDTH_RATIO
+        return half_width, half_height
+
+    def on_mouse_drag(self, event):
+        if not self.dragging or self.mode != 'map' or self.correct_country_row is None:
+            return
+            
+        dx = event.x - self.last_mouse_x
+        dy = event.y - self.last_mouse_y
+
+        canvas_width = max(1, self.canvas_widget.winfo_width())
+        canvas_height = max(1, self.canvas_widget.winfo_height())
+
+        half_width, half_height = self.get_view_extents()
+        full_width = half_width * 2
+        full_height = half_height * 2
+
+        self.pan_x -= dx * (full_width / canvas_width)
+        self.pan_y += dy * (full_height / canvas_height)
+        
+        self.last_mouse_x = event.x
+        self.last_mouse_y = event.y
+        self.update_map_view()
+
+    def update_map_view(self):
+        if not hasattr(self, 'ax') or self.correct_country_row is None:
+            return
+            
+        geom = self.correct_country_row['geometry']
+        lon, lat = geom.centroid.x, geom.centroid.y
+
+        half_width, half_height = self.get_view_extents()
+        
+        self.ax.set_xlim([
+            lon - half_width + self.pan_x,
+            lon + half_width + self.pan_x
+        ])
+        self.ax.set_ylim([
+            lat - half_height + self.pan_y,
+            lat + half_height + self.pan_y
+        ])
+        self.canvas.draw()
+
+    def render_map(self):
+        self.ax.clear()
+        self.ax.set_facecolor(self.OCEAN_COLOR)
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+        for spine in self.ax.spines.values():
+            spine.set_visible(False)
+            
+        self.world.plot(ax=self.ax, color=self.LAND_COLOR, edgecolor=self.BORDER_COLOR, linewidth=0.5)
+        
+        geom = self.correct_country_row['geometry']
+        lon, lat = geom.centroid.x, geom.centroid.y
+        self.ax.plot(lon, lat, marker='o', color=self.MARKER_COLOR, markersize=12,
+                     markeredgecolor='black', zorder=5)
+        
+        half_width, half_height = self.get_view_extents()
+        self.ax.set_xlim([lon - half_width, lon + half_width])
+        self.ax.set_ylim([lat - half_height, lat + half_height])
+        self.canvas.draw()
         
     def load_stats(self):
         if os.path.exists(self.stats_file):
@@ -140,52 +251,6 @@ class CountryGuessingGame:
         self.world = self.world[self.world['name'] != 'Antarctica']
         self.world = self.world[self.world['iso3'].notna()]
         
-    def setup_ui(self):
-        top_frame = tk.Frame(self.root)
-        top_frame.pack(fill="x", padx=20, pady=10)
-        
-        mode_label = "Map Mode" if self.mode == 'map' else "Flag Mode"
-        self.score_label = tk.Label(top_frame, text=f"Score: 0 / 0 | {mode_label}", 
-                                   font=("Arial", 16, "bold"))
-        self.score_label.pack(anchor="ne")
-        
-        if self.mode == 'map':
-            self.fig, self.ax = plt.subplots(figsize=(7, 4))
-            self.fig.patch.set_facecolor(self.OCEAN_COLOR)
-            self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-            
-            self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-            canvas_widget = self.canvas.get_tk_widget()
-            canvas_widget.pack(fill="both", expand=True, padx=20, pady=5)
-            
-            # Bind zoom and pan events
-            canvas_widget.bind("<MouseWheel>", self.on_mouse_wheel)
-            canvas_widget.bind("<ButtonPress-1>", self.on_mouse_press)
-            canvas_widget.bind("<B1-Motion>", self.on_mouse_drag)
-            canvas_widget.bind("<ButtonRelease-1>", self.on_mouse_release)
-            
-        # Flag label (always shown)
-        self.flag_label = tk.Label(self.root)
-        self.flag_label.pack(pady=10)
-        
-        bottom_frame = tk.Frame(self.root)
-        bottom_frame.pack(fill="x", pady=10)
-        
-        self.btn_frame = tk.Frame(bottom_frame)
-        self.btn_frame.pack()
-        
-        self.choice_buttons = []
-        for i in range(4):
-            btn = tk.Button(self.btn_frame, text="", font=("Arial", 14))
-            btn.grid(row=i//2, column=i%2, padx=5, pady=10)
-            self.choice_buttons.append(btn)
-            
-        self.result_label = tk.Label(bottom_frame, text="", font=("Arial", 16, "bold"))
-        self.result_label.pack(pady=5)
-        
-        self.next_button = tk.Button(bottom_frame, text="Next Round ➔", font=("Arial", 14, "bold"), 
-                                     bg="#4CAF50", fg="white", state=tk.DISABLED, command=self.next_round)
-        self.next_button.pack(pady=10)
                                      
     def on_mouse_wheel(self, event):
         if self.mode != 'map':
@@ -203,43 +268,9 @@ class CountryGuessingGame:
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
         
-    def on_mouse_drag(self, event):
-        if not self.dragging or self.mode != 'map':
-            return
-            
-        dx = event.x - self.last_mouse_x
-        dy = event.y - self.last_mouse_y
-        
-        # Convert pixel delta to map coordinates (rough approximation)
-        self.pan_x -= dx * (self.ZOOM_PADDING * 2 / 800) * (1 / self.zoom_level)
-        self.pan_y += dy * (self.ZOOM_PADDING * 2 / 400) * (1 / self.zoom_level)
-        
-        self.last_mouse_x = event.x
-        self.last_mouse_y = event.y
-        self.update_map_view()
-        
     def on_mouse_release(self, event):
         self.dragging = False
-        
-    def update_map_view(self):
-        if not hasattr(self, 'ax') or self.correct_country_row is None:
-            return
-            
-        geom = self.correct_country_row['geometry']
-        lon, lat = geom.centroid.x, geom.centroid.y
-        
-        padding = self.ZOOM_PADDING / self.zoom_level
-        
-        self.ax.set_xlim([
-            lon - padding + self.pan_x,
-            lon + padding + self.pan_x
-        ])
-        self.ax.set_ylim([
-            lat - padding + self.pan_y,
-            lat + padding + self.pan_y
-        ])
-        self.canvas.draw()
-        
+   
     def next_round(self):
         self.result_label.config(text="")
         # Button is always visible, just need to reset its state
@@ -266,23 +297,6 @@ class CountryGuessingGame:
         self.show_flag()
         self.update_choice_buttons(choice_records)
         
-    def render_map(self):
-        self.ax.clear()
-        self.ax.set_facecolor(self.OCEAN_COLOR)
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
-        for spine in self.ax.spines.values():
-            spine.set_visible(False)
-            
-        self.world.plot(ax=self.ax, color=self.LAND_COLOR, edgecolor=self.BORDER_COLOR, linewidth=0.5)
-        
-        geom = self.correct_country_row['geometry']
-        lon, lat = geom.centroid.x, geom.centroid.y
-        self.ax.plot(lon, lat, marker='o', color=self.MARKER_COLOR, markersize=12, markeredgecolor='black', zorder=5)
-        
-        self.ax.set_xlim([lon - self.ZOOM_PADDING - 75, lon + self.ZOOM_PADDING + 75])
-        self.ax.set_ylim([lat - self.ZOOM_PADDING - 10, lat + self.ZOOM_PADDING + 10])
-        self.canvas.draw()
         
     def update_choice_buttons(self, choice_records):
         for i, btn in enumerate(self.choice_buttons):
