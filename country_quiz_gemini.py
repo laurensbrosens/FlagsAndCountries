@@ -141,8 +141,8 @@ class CountryGuessingGame:
         self.ax.plot(lon, lat, marker='o', color=self.MARKER_COLOR, markersize=12, markeredgecolor='black', zorder=5)
 
         # Apply configurable Zoom Level (Bounding Box)
-        self.ax.set_xlim([lon - self.ZOOM_PADDING, lon + self.ZOOM_PADDING])
-        self.ax.set_ylim([lat - self.ZOOM_PADDING, lat + self.ZOOM_PADDING])
+        self.ax.set_xlim([lon - self.ZOOM_PADDING - 75, lon + self.ZOOM_PADDING + 75])
+        self.ax.set_ylim([lat - self.ZOOM_PADDING - 10, lat + self.ZOOM_PADDING + 10])
 
         # Push the drawn map to the screen
         self.canvas.draw()
