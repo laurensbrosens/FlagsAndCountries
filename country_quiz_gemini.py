@@ -171,7 +171,8 @@ class CountryGuessingGame:
         self.result_label.pack(pady=5)
         
         self.next_button = tk.Button(bottom_frame, text="Next Round ➔", font=("Arial", 14, "bold"), 
-                                     bg="#4CAF50", fg="white", command=self.next_round)
+                                     bg="#4CAF50", fg="white", state=tk.DISABLED, command=self.next_round)
+        self.next_button.pack(pady=10)
                                      
     def on_mouse_wheel(self, event):
         if self.mode != 'map':
@@ -228,7 +229,8 @@ class CountryGuessingGame:
         
     def next_round(self):
         self.result_label.config(text="")
-        self.next_button.pack_forget()
+        # Button is always visible, just need to reset its state
+        self.next_button.config(state=tk.DISABLED)
         
         for btn in self.choice_buttons:
             btn.config(state="normal", text="Loading...", bg="SystemButtonFace")
@@ -298,6 +300,8 @@ class CountryGuessingGame:
         self.update_stats(correct_name, is_correct)
         
         self.score_label.config(text=f"Score: {self.score} / {self.total} | {'Map' if self.mode == 'map' else 'Flag'} Mode")
+        # Enable the next button after an answer is clicked
+        self.next_button.config(state="normal")
         self.next_button.pack(pady=10)
         
     def show_flag(self):
