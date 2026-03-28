@@ -107,7 +107,6 @@ class CountryGuessingGame:
 
     def next_round(self):
         self.result_label.config(text="")
-        self.flag_label.config(image='')
         self.next_button.pack_forget()
 
         for btn in self.choice_buttons:
@@ -148,6 +147,9 @@ class CountryGuessingGame:
         # Push the drawn map to the screen
         self.canvas.draw()
 
+        # Show the flag immediately (always visible)
+        self.show_flag()
+
         # Update buttons using the new 'name' key
         for i, btn in enumerate(self.choice_buttons):
             c_name = choice_records[i]['name']
@@ -172,7 +174,6 @@ class CountryGuessingGame:
             self.result_label.config(text=f"Incorrect. The correct answer was {correct_name}.", fg="red")
 
         self.score_label.config(text=f"Score: {self.score} / {self.total}")
-        self.show_flag()
         self.next_button.pack(pady=10)
 
     def show_flag(self):
