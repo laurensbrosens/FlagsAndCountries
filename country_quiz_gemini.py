@@ -256,9 +256,9 @@ class CountryGuessingGame:
         if self.mode != 'map':
             return
             
-        zoom_factor = 1.1 if event.delta > 0 else 0.9
+        zoom_factor = 1.3 if event.delta > 0 else 0.7
         self.zoom_level *= zoom_factor
-        self.zoom_level = max(0.5, min(self.zoom_level, 5.0))
+        self.zoom_level = max(0.5, min(self.zoom_level, 1000.0))
         self.update_map_view()
         
     def on_mouse_press(self, event):
