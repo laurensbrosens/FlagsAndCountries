@@ -55,8 +55,7 @@ class CountryGuessingGame:
         
         # Map configuration
         self.OCEAN_COLOR = "#aadaff"
-        self.LAND_COLOR = "#e0e0e0"
-        self.BORDER_COLOR = "#ffffff"
+        self.BORDER_COLOR = "#ffffff" # White borders separate colors nicely
         self.MARKER_COLOR = "#ff4444"
         self.ZOOM_PADDING = 25.0
         self.MAP_WIDTH_RATIO = 2.85
@@ -176,7 +175,8 @@ class CountryGuessingGame:
         for spine in self.ax.spines.values():
             spine.set_visible(False)
             
-        self.world.plot(ax=self.ax, color=self.LAND_COLOR, edgecolor=self.BORDER_COLOR, linewidth=0.5)
+        # Draw the map using the random 'color_group' column and the 'tab20' colormap palette
+        self.world.plot(ax=self.ax, column='color_group', cmap='tab20', categorical=True, edgecolor=self.BORDER_COLOR, linewidth=0.5)
         
         geom = self.correct_country_row['geometry']
         lon, lat = geom.centroid.x, geom.centroid.y
@@ -248,6 +248,9 @@ class CountryGuessingGame:
         self.world = gpd.read_file(map_file)
         self.world = self.world[self.world['name'] != 'Antarctica']
         self.world = self.world[self.world['iso3'].notna()]
+        
+        # Generate random colors assigned to each country
+        self.world['color_group'] = [random.randint(0, 19) for _ in range(len(self.world))]
         
     def on_mouse_wheel(self, event):
         if self.mode != 'map':
