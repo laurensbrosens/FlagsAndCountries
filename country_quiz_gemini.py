@@ -45,11 +45,12 @@ class CountryGuessingGame:
         self.next_round()
 
     def load_map_data(self):
-        # Download standard low-resolution country boundaries (approx 700kb)
-        map_file = "ne_110m_admin_0_countries.zip"
+        # Download UN World Administrative Boundaries (Approx 12MB geojson)
+        # This is an official alternative to Natural Earth.
+        map_file = "un_world_boundaries.geojson"
         if not os.path.exists(map_file):
-            print("Downloading map data (first time only)...")
-            url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+            print("Downloading map data (first time only, this may take a moment)...")
+            url = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/world-administrative-boundaries/exports/geojson?lang=en&timezone=UTC"
             r = requests.get(url)
             with open(map_file, 'wb') as f:
                 f.write(r.content)
@@ -58,8 +59,9 @@ class CountryGuessingGame:
         self.world = gpd.read_file(map_file)
         
         # Clean data: Remove Antarctica and territories without standard ISO codes
-        self.world = self.world[self.world['ADMIN'] != 'Antarctica']
-        self.world = self.world[self.world['ISO_A3'] != '-99']
+        # The UN dataset uses 'name' and 'iso3' columns instead of 'ADMIN' and 'ISO_A3'
+        self.world = self.world[self.world['name'] != 'Antarctica']
+        self.world = self.world[self.world['iso3'].notna()]
 
     def setup_ui(self):
         # --- Top Frame for Score ---
@@ -146,9 +148,9 @@ class CountryGuessingGame:
         # Push the drawn map to the screen
         self.canvas.draw()
 
-        # Update buttons
+        # Update buttons using the new 'name' key
         for i, btn in enumerate(self.choice_buttons):
-            c_name = choice_records[i]['ADMIN']
+            c_name = choice_records[i]['name']
             btn.config(
                 text=c_name, 
                 command=lambda name=c_name, b=btn: self.check_answer(name, b)
@@ -159,7 +161,7 @@ class CountryGuessingGame:
             btn.config(state="disabled")
 
         self.total += 1
-        correct_name = self.correct_country_row['ADMIN']
+        correct_name = self.correct_country_row['name']
         
         if guessed_name == correct_name:
             self.score += 1
@@ -175,8 +177,8 @@ class CountryGuessingGame:
 
     def show_flag(self):
         try:
-            # We use pycountry to convert the dataset's 3-letter code to the required 2-letter code
-            iso_a3 = self.correct_country_row['ISO_A3']
+            # We use pycountry to convert the dataset's 'iso3' 3-letter code to the required 2-letter code
+            iso_a3 = self.correct_country_row['iso3']
             country_obj = pycountry.countries.get(alpha_3=iso_a3)
             
             if country_obj:
