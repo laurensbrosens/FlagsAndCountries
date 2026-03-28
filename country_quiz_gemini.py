@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # Weight influence constant - higher values give more importance to miss rate
 WEIGHT_INFLUENCE = 5.0
+NUM_OPTIONS = 6
 
 class ModeSelection:
     def __init__(self, root):
@@ -110,7 +111,7 @@ class CountryGuessingGame:
         self.btn_frame.pack()
         
         self.choice_buttons = []
-        for i in range(4):
+        for i in range(NUM_OPTIONS):
             btn = tk.Button(self.btn_frame, text="", font=("Arial", 14))
             btn.grid(row=i//2, column=i%2, padx=5, pady=10)
             self.choice_buttons.append(btn)
@@ -206,11 +207,10 @@ class CountryGuessingGame:
             self.stats[country]["misses"] += 1
         self.save_stats()
         
-    def get_weighted_country_sample(self, n=4):
-        if not self.stats or len(self.stats) < 4:
+    def get_weighted_country_sample(self, n=NUM_OPTIONS):
+        if not self.stats or len(self.stats) < NUM_OPTIONS:
             return self.world.sample(n=n)
             
-        # Calculate average miss rate across all countries with stats
         total_misses = sum(self.stats[c]['misses'] for c in self.stats)
         total_correct = sum(self.stats[c]['correct'] for c in self.stats)
         total_attempts = total_misses + total_correct
@@ -225,8 +225,6 @@ class CountryGuessingGame:
                 total = misses + correct
                 if total > 0:
                     miss_rate = misses / total
-                    # Use relative miss rate (how much worse than average) instead of absolute misses
-                    # This prevents countries with many misses but many attempts from dominating
                     relative_factor = (miss_rate / (avg_miss_rate + 0.01)) if avg_miss_rate > 0 else 1
                     weight = relative_factor * WEIGHT_INFLUENCE + 1
                 else:
@@ -251,7 +249,6 @@ class CountryGuessingGame:
         self.world = self.world[self.world['name'] != 'Antarctica']
         self.world = self.world[self.world['iso3'].notna()]
         
-                                     
     def on_mouse_wheel(self, event):
         if self.mode != 'map':
             return
@@ -273,20 +270,17 @@ class CountryGuessingGame:
    
     def next_round(self):
         self.result_label.config(text="")
-        # Button is always visible, just need to reset its state
         self.next_button.config(state=tk.DISABLED)
         
         for btn in self.choice_buttons:
             btn.config(state="normal", text="Loading...", bg="SystemButtonFace")
         self.root.update()
         
-        # Reset zoom/pan for new round
         self.zoom_level = 1.0
         self.pan_x = 0
         self.pan_y = 0
         
-        # Weighted sampling based on miss rate
-        choice_df = self.get_weighted_country_sample(n=4)
+        choice_df = self.get_weighted_country_sample(n=NUM_OPTIONS)
         choice_records = choice_df.to_dict('records')
         self.correct_country_row = choice_records[0]
         random.shuffle(choice_records)
@@ -296,7 +290,6 @@ class CountryGuessingGame:
             
         self.show_flag()
         self.update_choice_buttons(choice_records)
-        
         
     def update_choice_buttons(self, choice_records):
         for i, btn in enumerate(self.choice_buttons):
@@ -323,11 +316,9 @@ class CountryGuessingGame:
             clicked_button.config(bg="salmon")
             self.result_label.config(text=f"Incorrect. The correct answer was {correct_name}.", fg="red")
             
-        # Update persistent stats
         self.update_stats(correct_name, is_correct)
         
         self.score_label.config(text=f"Score: {self.score} / {self.total} | {'Map' if self.mode == 'map' else 'Flag'} Mode")
-        # Enable the next button after an answer is clicked
         self.next_button.config(state="normal")
         self.next_button.pack(pady=10)
         
@@ -348,11 +339,11 @@ class CountryGuessingGame:
                 img.thumbnail((200, 150))
                 
                 self.flag_photo = ImageTk.PhotoImage(img)
-                self.flag_label.config(image=self.flag_photo)
+                self.flag_label.config(image=self.flag_photo, text="")
             else:
-                self.flag_label.config(text="[Flag Image Not Available]")
+                self.flag_label.config(image="", text="[Flag Image Not Available]")
         except Exception:
-            self.flag_label.config(text="[Flag Image Not Available]")
+            self.flag_label.config(image="", text="[Flag Image Not Available]")
 
 if __name__ == "__main__":
     root = tk.Tk()
