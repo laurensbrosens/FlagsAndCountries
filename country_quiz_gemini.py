@@ -32,7 +32,15 @@ class CountryGuessingGame:
         
         # ZOOM LEVEL: Defined in coordinate degrees. 
         # (E.g., 20.0 = zoomed in. 50.0 = zoomed out map)
-        self.ZOOM_PADDING = 25.0        
+        self.ZOOM_PADDING = 25.0
+        
+        # ==========================================
+        # BUTTON TEXT CONFIGURATION
+        # ==========================================
+        # Estimated characters per inch for button width calculation
+        # Increase this value (e.g., 8-12) to make buttons wider for long names
+        # Decrease this value (e.g., 3-5) to make buttons narrower
+        self.CHAR_DENSITY = 1.5
         # ==========================================
 
         self.load_map_data()
@@ -87,11 +95,11 @@ class CountryGuessingGame:
         self.btn_frame = tk.Frame(bottom_frame)
         self.btn_frame.pack()
 
-        # Create the 4 multiple-choice buttons
+        # Create the 4 multiple-choice buttons (no fixed width for flexibility)
         self.choice_buttons = []
         for i in range(4):
-            btn = tk.Button(self.btn_frame, text="", font=("Arial", 14), width=25)
-            btn.grid(row=i//2, column=i%2, padx=10, pady=10)
+            btn = tk.Button(self.btn_frame, text="", font=("Arial", 14))
+            btn.grid(row=i//2, column=i%2, padx=5, pady=10)  # Reduced padding to allow more space
             self.choice_buttons.append(btn)
 
         # Labels for correct answer & flag
@@ -150,13 +158,16 @@ class CountryGuessingGame:
         # Show the flag immediately (always visible)
         self.show_flag()
 
-        # Update buttons using the new 'name' key
+        # Update buttons using the new 'name' key with dynamic width adjustment
         for i, btn in enumerate(self.choice_buttons):
             c_name = choice_records[i]['name']
             btn.config(
                 text=c_name, 
                 command=lambda name=c_name, b=btn: self.check_answer(name, b)
             )
+            # Calculate dynamic width based on text length to prevent overflow
+            # Formula: base_width + (name_length / char_density)
+            btn.config(width=max(15, int(len(c_name) / self.CHAR_DENSITY) + 8))  # Dynamic width based on name length
 
     def check_answer(self, guessed_name, clicked_button):
         for btn in self.choice_buttons:
