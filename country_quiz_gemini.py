@@ -13,6 +13,9 @@ from PIL import Image, ImageTk
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
+# Weight influence constant - higher values give more importance to miss rate
+WEIGHT_INFLUENCE = 5.0
+
 class ModeSelection:
     def __init__(self, root):
         self.root = root
@@ -96,6 +99,12 @@ class CountryGuessingGame:
         if not self.stats or len(self.stats) < 4:
             return self.world.sample(n=n)
             
+        # Calculate average miss rate across all countries with stats
+        total_misses = sum(self.stats[c]['misses'] for c in self.stats)
+        total_correct = sum(self.stats[c]['correct'] for c in self.stats)
+        total_attempts = total_misses + total_correct
+        avg_miss_rate = total_misses / total_attempts if total_attempts > 0 else 0
+        
         weights = []
         for idx, row in self.world.iterrows():
             country = row['name']
@@ -104,7 +113,11 @@ class CountryGuessingGame:
                 correct = self.stats[country]['correct']
                 total = misses + correct
                 if total > 0:
-                    weight = (misses / total) * 10 + 1
+                    miss_rate = misses / total
+                    # Use relative miss rate (how much worse than average) instead of absolute misses
+                    # This prevents countries with many misses but many attempts from dominating
+                    relative_factor = (miss_rate / (avg_miss_rate + 0.01)) if avg_miss_rate > 0 else 1
+                    weight = relative_factor * WEIGHT_INFLUENCE + 1
                 else:
                     weight = 1
             else:
