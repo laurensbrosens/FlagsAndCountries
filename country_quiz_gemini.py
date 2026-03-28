@@ -13,8 +13,11 @@ from PIL import Image, ImageTk
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# Weight influence constant - higher values give more importance to miss rate
-WEIGHT_INFLUENCE = 5.0
+# --- Configuration Constants ---
+STATS_IGNORE_CHANCE = 0.5      # 50% chance that stats don't influence the country at all
+WEIGHT_CORRECT_PENALTY = 0.75  # Hardcoded max penalty (-25% compared to random base of 1.0)
+WEIGHT_MISS_BONUS = 1.25       # Hardcoded max bonus (+25% compared to random base of 1.0)
+MIN_CORRECT_GUESSES = 3        # Penalty only applies when a country has been guessed correctly >= 3 times
 NUM_OPTIONS = 6
 
 class ModeSelection:
@@ -208,29 +211,27 @@ class CountryGuessingGame:
         self.save_stats()
         
     def get_weighted_country_sample(self, n=NUM_OPTIONS):
-        if not self.stats or len(self.stats) < NUM_OPTIONS:
+        # 50% chance that stats don't influence the selection at all
+        if random.random() < STATS_IGNORE_CHANCE or not self.stats or len(self.stats) < NUM_OPTIONS:
             return self.world.sample(n=n)
             
-        total_misses = sum(self.stats[c]['misses'] for c in self.stats)
-        total_correct = sum(self.stats[c]['correct'] for c in self.stats)
-        total_attempts = total_misses + total_correct
-        avg_miss_rate = total_misses / total_attempts if total_attempts > 0 else 0
-        
         weights = []
         for idx, row in self.world.iterrows():
             country = row['name']
+            weight = 1.0  # Base weight (random)
+            
             if country in self.stats:
-                misses = self.stats[country]['misses']
-                correct = self.stats[country]['correct']
-                total = misses + correct
-                if total > 0:
-                    miss_rate = misses / total
-                    relative_factor = (miss_rate / (avg_miss_rate + 0.01)) if avg_miss_rate > 0 else 1
-                    weight = relative_factor * WEIGHT_INFLUENCE + 1
-                else:
-                    weight = 1
-            else:
-                weight = 1
+                misses = self.stats[country].get('misses', 0)
+                correct = self.stats[country].get('correct', 0)
+                
+                # Countries with much more corrects than misses
+                if correct > misses and correct >= MIN_CORRECT_GUESSES:
+                    weight = WEIGHT_CORRECT_PENALTY
+                    
+                # Countries with much more misses than correct guesses
+                elif misses > correct:
+                    weight = WEIGHT_MISS_BONUS
+                    
             weights.append(weight)
             
         return self.world.sample(n=n, weights=weights)
