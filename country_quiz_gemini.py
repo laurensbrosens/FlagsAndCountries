@@ -1,11 +1,17 @@
 import tkinter as tk
 import random
 import io
+import os
 import requests
+import warnings
 import pycountry
-from geopy.geocoders import Nominatim
-import tkintermapview
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
+
+# Suppress warnings about geographic center point calculations
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class CountryGuessingGame:
     def __init__(self, root):
@@ -13,23 +19,47 @@ class CountryGuessingGame:
         self.root.geometry("800x850")
         self.root.title("Country Location Guessing Game")
 
-        # Game statistics
         self.score = 0
         self.total = 0
 
-        # Setup python geocoder to get coordinates
-        # (Nominatim requires a custom user-agent string)
-        self.geolocator = Nominatim(user_agent="python_country_guesser_game")
+        # ==========================================
+        # MAP CONFIGURATION (Change Details in Code)
+        # ==========================================
+        self.OCEAN_COLOR = "#aadaff"    # Light blue background
+        self.LAND_COLOR = "#e0e0e0"     # Light grey countries
+        self.BORDER_COLOR = "#ffffff"   # White borders
+        self.MARKER_COLOR = "#ff4444"   # Red marker for the country
+        
+        # ZOOM LEVEL: Defined in coordinate degrees. 
+        # (E.g., 20.0 = zoomed in. 50.0 = zoomed out map)
+        self.ZOOM_PADDING = 25.0        
+        # ==========================================
 
-        # Get list of all official country objects from pycountry
-        self.countries = list(pycountry.countries)
+        self.load_map_data()
         
         self.choices = []
-        self.correct_country = None
+        self.correct_country_row = None
         self.flag_photo = None
 
         self.setup_ui()
         self.next_round()
+
+    def load_map_data(self):
+        # Download standard low-resolution country boundaries (approx 700kb)
+        map_file = "ne_110m_admin_0_countries.zip"
+        if not os.path.exists(map_file):
+            print("Downloading map data (first time only)...")
+            url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+            r = requests.get(url)
+            with open(map_file, 'wb') as f:
+                f.write(r.content)
+
+        print("Loading local vector map...")
+        self.world = gpd.read_file(map_file)
+        
+        # Clean data: Remove Antarctica and territories without standard ISO codes
+        self.world = self.world[self.world['ADMIN'] != 'Antarctica']
+        self.world = self.world[self.world['ISO_A3'] != '-99']
 
     def setup_ui(self):
         # --- Top Frame for Score ---
@@ -39,11 +69,14 @@ class CountryGuessingGame:
         self.score_label = tk.Label(top_frame, text="Score: 0 / 0", font=("Arial", 16, "bold"))
         self.score_label.pack(anchor="ne")
 
-        # --- Map View ---
-        # We use a tile server without labels so it doesn't give away the answer
-        self.map_widget = tkintermapview.TkinterMapView(self.root, width=700, height=350, corner_radius=5)
-        self.map_widget.pack(fill="both", expand=True, padx=20, pady=5)
-        self.map_widget.set_tile_server("https://a.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}.png", max_zoom=19)
+        # --- Matplotlib Map Canvas ---
+        self.fig, self.ax = plt.subplots(figsize=(7, 4))
+        self.fig.patch.set_facecolor(self.OCEAN_COLOR) # Set outside padding color
+        self.fig.subplots_adjust(left=0, right=1, bottom=0, top=1) # Remove margins
+        
+        # Embed the Matplotlib figure into Tkinter
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=20, pady=5)
 
         # --- Bottom Frame for Controls & Results ---
         bottom_frame = tk.Frame(self.root)
@@ -66,12 +99,11 @@ class CountryGuessingGame:
         self.flag_label = tk.Label(bottom_frame)
         self.flag_label.pack(pady=5)
 
-        # Next Round button (Hidden initially)
+        # Next Round button
         self.next_button = tk.Button(bottom_frame, text="Next Round ➔", font=("Arial", 14, "bold"), 
-                                     bg="#4CAF50", fg="black", command=self.next_round)
+                                     bg="#4CAF50", fg="white", command=self.next_round)
 
     def next_round(self):
-        # Reset UI for the new round
         self.result_label.config(text="")
         self.flag_label.config(image='')
         self.next_button.pack_forget()
@@ -80,75 +112,89 @@ class CountryGuessingGame:
             btn.config(state="normal", text="Loading...", bg="SystemButtonFace")
         self.root.update()
 
-        location = None
-        # Loop until we successfully fetch coordinates for a random country
-        while not location:
-            # Pick 4 random countries
-            self.choices = random.sample(self.countries, 4)
-            self.correct_country = random.choice(self.choices)
-            try:
-                # Use geopy to get the latitude and longitude
-                location = self.geolocator.geocode(self.correct_country.name, exactly_one=True, timeout=5)
-            except Exception:
-                # If geocoding fails/times out, loop runs again automatically
-                pass
+        # Pick 4 random countries and randomly set 1 as the correct answer
+        choice_df = self.world.sample(n=4)
+        choice_records = choice_df.to_dict('records')
+        self.correct_country_row = choice_records[0]
+        
+        random.shuffle(choice_records)
 
-        # Update the map with the retrieved coordinates
-        self.map_widget.set_position(location.latitude, location.longitude)
-        self.map_widget.set_zoom(5) # Set a wide zoom to give geographic context
-        self.map_widget.delete_all_marker()
-        self.map_widget.set_marker(location.latitude, location.longitude, text="?")
+        # Calculate exact center point of the country programmatically
+        geom = self.correct_country_row['geometry']
+        lon, lat = geom.centroid.x, geom.centroid.y
 
-        # Update button text and commands
+        # --- Render the Map ---
+        self.ax.clear()
+        self.ax.set_facecolor(self.OCEAN_COLOR)
+        
+        # Turn off traditional plot grids/labels
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+        for spine in self.ax.spines.values():
+            spine.set_visible(False)
+
+        # Draw the world map
+        self.world.plot(ax=self.ax, color=self.LAND_COLOR, edgecolor=self.BORDER_COLOR, linewidth=0.5)
+
+        # Draw the target marker over the country
+        self.ax.plot(lon, lat, marker='o', color=self.MARKER_COLOR, markersize=12, markeredgecolor='black', zorder=5)
+
+        # Apply configurable Zoom Level (Bounding Box)
+        self.ax.set_xlim([lon - self.ZOOM_PADDING, lon + self.ZOOM_PADDING])
+        self.ax.set_ylim([lat - self.ZOOM_PADDING, lat + self.ZOOM_PADDING])
+
+        # Push the drawn map to the screen
+        self.canvas.draw()
+
+        # Update buttons
         for i, btn in enumerate(self.choice_buttons):
+            c_name = choice_records[i]['ADMIN']
             btn.config(
-                text=self.choices[i].name, 
-                command=lambda c=self.choices[i], b=btn: self.check_answer(c, b)
+                text=c_name, 
+                command=lambda name=c_name, b=btn: self.check_answer(name, b)
             )
 
-    def check_answer(self, guessed_country, clicked_button):
-        # Disable all buttons to prevent multiple guesses
+    def check_answer(self, guessed_name, clicked_button):
         for btn in self.choice_buttons:
             btn.config(state="disabled")
 
         self.total += 1
+        correct_name = self.correct_country_row['ADMIN']
         
-        # Check if right or wrong
-        if guessed_country == self.correct_country:
+        if guessed_name == correct_name:
             self.score += 1
             clicked_button.config(bg="lightgreen")
-            self.result_label.config(text=f"Correct! It is {self.correct_country.name}.", fg="green")
+            self.result_label.config(text=f"Correct! It is {correct_name}.", fg="green")
         else:
             clicked_button.config(bg="salmon")
-            self.result_label.config(text=f"Incorrect. The correct answer was {self.correct_country.name}.", fg="red")
+            self.result_label.config(text=f"Incorrect. The correct answer was {correct_name}.", fg="red")
 
-        # Update score display
         self.score_label.config(text=f"Score: {self.score} / {self.total}")
-
-        # Show the country's flag and display the "Next" button
         self.show_flag()
         self.next_button.pack(pady=10)
 
     def show_flag(self):
         try:
-            # Get 2-letter country code (e.g., 'US', 'FR') and use a flag CDN API
-            code = self.correct_country.alpha_2.lower()
-            url = f"https://flagcdn.com/w320/{code}.png"
+            # We use pycountry to convert the dataset's 3-letter code to the required 2-letter code
+            iso_a3 = self.correct_country_row['ISO_A3']
+            country_obj = pycountry.countries.get(alpha_3=iso_a3)
             
-            # Fetch the image via HTTP requests
-            response = requests.get(url)
-            response.raise_for_status()
-            
-            # Convert raw bytes into a Pillow Image, then to Tkinter Image
-            img_data = response.content
-            img = Image.open(io.BytesIO(img_data))
-            
-            # Keep aspect ratio but limit size
-            img.thumbnail((200, 150))
-            self.flag_photo = ImageTk.PhotoImage(img)
-            
-            self.flag_label.config(image=self.flag_photo)
-        except Exception as e:
+            if country_obj:
+                code = country_obj.alpha_2.lower()
+                url = f"https://flagcdn.com/w320/{code}.png"
+                
+                response = requests.get(url)
+                response.raise_for_status()
+                
+                img_data = response.content
+                img = Image.open(io.BytesIO(img_data))
+                img.thumbnail((200, 150))
+                
+                self.flag_photo = ImageTk.PhotoImage(img)
+                self.flag_label.config(image=self.flag_photo)
+            else:
+                self.flag_label.config(text="[Flag Image Not Available]")
+        except Exception:
             self.flag_label.config(text="[Flag Image Not Available]")
 
 if __name__ == "__main__":
