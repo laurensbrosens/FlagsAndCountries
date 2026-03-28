@@ -218,12 +218,12 @@ class CountryGuessingGame:
         padding = self.ZOOM_PADDING / self.zoom_level
         
         self.ax.set_xlim([
-            lon - padding - 75 + self.pan_x,
-            lon + padding + 75 + self.pan_x
+            lon - padding + self.pan_x,
+            lon + padding + self.pan_x
         ])
         self.ax.set_ylim([
-            lat - padding - 10 + self.pan_y,
-            lat + padding + 10 + self.pan_y
+            lat - padding + self.pan_y,
+            lat + padding + self.pan_y
         ])
         self.canvas.draw()
         
