@@ -431,18 +431,6 @@
 
         if (currentMode === 'map' || currentMode === 'islands') {
             renderMap(currentCorrectFeature);
-            
-            // --- NEW: Update and display the flag overlay ---
-            const overlay = document.getElementById('map-flag-overlay');
-            if (overlay) {
-                overlay.style.display = 'none'; // hide temporarily
-                overlay.src = "";
-                const url = await getFlagUrl(currentCorrectFeature.properties.iso3);
-                if (url) {
-                    overlay.src = url;
-                    overlay.style.display = 'block'; // show once loaded
-                }
-            }
         } else if (currentMode === 'flag') {
             await showFlag(currentCorrectFeature);
         }
@@ -451,12 +439,9 @@
     }
 
     // --- D3 Map Handling ---
-function initD3Map() {
+    function initD3Map() {
         const container = document.getElementById('map-container');
         container.innerHTML = '';
-        
-        // Ensure the container is positioned so the absolute flag stays inside it
-        container.style.position = 'relative'; 
         
         svg = d3.select(container).append('svg');
         const g = svg.append('g');
@@ -478,18 +463,13 @@ function initD3Map() {
             .style('stroke', 'var(--border-color)')
             .style('stroke-width', 0.5);
 
+        // Marker drastically reduced in size (radius 2) and thinner stroke
         marker = g.append('circle')
             .attr('r', 2)
             .attr('fill', 'var(--marker-color)')
             .attr('stroke', 'black')
             .attr('stroke-width', 0.5)
             .style('display', 'none');
-
-        // --- NEW: Create and style the flag overlay ---
-        const flagOverlay = document.createElement('img');
-        flagOverlay.id = 'map-flag-overlay';
-        flagOverlay.style.cssText = 'position: absolute; top: 10px; left: 10px; width: 100px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border-radius: 4px; pointer-events: none; z-index: 10; display: none; background: #eee;';
-        container.appendChild(flagOverlay);
     }
 
     function renderMap(targetFeature) {
