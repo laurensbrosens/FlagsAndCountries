@@ -1,874 +1,647 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Country Guessing Game</title>
-<style>
-  :root{
-    --bg:#f5f7fb;
-    --card:#ffffff;
-    --text:#172033;
-    --muted:#6b7280;
-    --accent:#2563eb;
-    --green:#22c55e;
-    --red:#ef4444;
-    --ocean:#aadaff;
-    --border:#e5e7eb;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    font-family:Arial, Helvetica, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-  }
-  .app{
-    max-width:1200px;
-    margin:0 auto;
-    padding:16px;
-  }
-  .card{
-    background:var(--card);
-    border-radius:16px;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);
-    padding:20px;
-    margin-bottom:16px;
-  }
-  .center{text-align:center}
-  h1,h2,h3{margin:0 0 12px}
-  .modes{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:12px;
-    margin-top:20px;
-  }
-  button{
-    border:none;
-    border-radius:12px;
-    padding:12px 14px;
-    font-size:16px;
-    cursor:pointer;
-    background:#e5e7eb;
-    color:#111827;
-  }
-  button:hover{filter:brightness(.98)}
-  button.primary{
-    background:var(--accent);
-    color:white;
-  }
-  button.next{
-    background:#16a34a;
-    color:white;
-    font-weight:bold;
-  }
-  button:disabled{
-    opacity:.6;
-    cursor:not-allowed;
-  }
-  .topbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-    flex-wrap:wrap;
-  }
-  .score{
-    font-size:20px;
-    font-weight:bold;
-  }
-  .subtle{
-    color:var(--muted);
-    font-size:14px;
-  }
-  .hidden{display:none !important;}
-  .map-wrap{
-    width:100%;
-    overflow:hidden;
-    border-radius:14px;
-    background:var(--ocean);
-    border:1px solid var(--border);
-    touch-action:none;
-  }
-  svg{
-    display:block;
-    width:100%;
-    height:auto;
-    user-select:none;
-    -webkit-user-select:none;
-  }
-  .flag-box{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:170px;
-    margin:10px 0 20px;
-  }
-  .flag-box img{
-    max-width:220px;
-    max-height:150px;
-    border:1px solid #d1d5db;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-    background:white;
-  }
-  .choices{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:10px;
-  }
-  .choices button{
-    min-height:48px;
-    white-space:normal;
-    line-height:1.2;
-  }
-  .result{
-    text-align:center;
-    font-size:20px;
-    font-weight:bold;
-    min-height:28px;
-    margin-top:12px;
-  }
-  .green{color:#15803d}
-  .red{color:#b91c1c}
-  .controls{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    margin-top:12px;
-    flex-wrap:wrap;
-  }
-  .prompt{
-    text-align:center;
-    font-size:28px;
-    font-weight:bold;
-    margin:10px 0 20px;
-  }
-  .flag-grid{
-    display:grid;
-    grid-template-columns:repeat(5, 1fr);
-    gap:10px;
-  }
-  .flag-choice{
-    background:white;
-    border:1px solid #d1d5db;
-    padding:8px;
-    border-radius:10px;
-  }
-  .flag-choice img{
-    width:100%;
-    aspect-ratio: 3 / 2;
-    object-fit:contain;
-    background:#f3f4f6;
-    display:block;
-    border-radius:6px;
-  }
-  .status{
-    font-size:14px;
-    color:var(--muted);
-    text-align:center;
-    margin-top:8px;
-  }
-  @media (max-width: 900px){
-    .flag-grid{
-      grid-template-columns:repeat(4, 1fr);
-    }
-  }
-  @media (max-width: 650px){
-    .flag-grid{
-      grid-template-columns:repeat(3, 1fr);
-    }
-    .prompt{font-size:22px}
-    .score{font-size:18px}
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Country Guessing Game</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --ocean-color: #aadaff;
+            --border-color: #ffffff;
+            --marker-color: #ff4444;
+            --bg-color: #f4f4f9;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Container Styles */
+        #loading-screen, #menu-screen, #game-screen {
+            width: 100%;
+            max-width: 1100px;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        #menu-screen { margin-top: 50px; }
+        #menu-screen button {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 15px auto;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background-color: white;
+            transition: background-color 0.2s;
+        }
+        #menu-screen button:hover { background-color: #e0e0e0; }
+
+        /* Game Header */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .back-btn {
+            background: #ccc;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Interactive Elements */
+        #map-container {
+            width: 100%;
+            height: 50vh;
+            background-color: var(--ocean-color);
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            position: relative;
+            touch-action: none; /* Crucial for mobile zooming/panning */
+        }
+        
+        svg { width: 100%; height: 100%; cursor: grab; }
+        svg:active { cursor: grabbing; }
+
+        #flag-container { margin: 20px 0; }
+        #flag-container img { max-width: 250px; max-height: 150px; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        #prompt-label { font-size: 24px; font-weight: bold; margin: 15px 0; }
+
+        /* Grids */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .flag-mcq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button.option-btn {
+            padding: 12px 5px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+            background-color: white;
+            transition: transform 0.1s;
+        }
+        button.option-btn:active { transform: scale(0.97); }
+        button.option-btn:disabled { cursor: not-allowed; opacity: 0.9; }
+
+        button.flag-btn {
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            background-color: #fff;
+        }
+        button.flag-btn img {
+            width: 100px;
+            height: 70px;
+            object-fit: contain;
+        }
+
+        /* Result & Next */
+        #result-label { font-size: 20px; font-weight: bold; margin: 15px 0; min-height: 24px; }
+        #next-btn {
+            font-size: 18px; font-weight: bold;
+            background-color: #4CAF50; color: white;
+            border: none; padding: 12px 24px;
+            border-radius: 8px; cursor: pointer;
+        }
+        #next-btn:disabled { background-color: #9E9E9E; cursor: not-allowed; }
+
+        .correct { background-color: lightgreen !important; border-color: green !important; }
+        .incorrect { background-color: salmon !important; border-color: red !important; }
+
+        /* Loader */
+        .loader {
+            border: 6px solid #f3f3f3; border-top: 6px solid #3498db;
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite; margin: 30px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
-<div class="app">
-  <div id="menuView" class="card center">
-    <h1>Country Guessing Game</h1>
-    <div class="subtle">Static single-file web version for GitHub Pages</div>
-    <div class="modes">
-      <button class="primary" data-mode="map">🗺️ Map Mode</button>
-      <button class="primary" data-mode="islands">🏝️ Islands Map Mode</button>
-      <button class="primary" data-mode="flag">🏁 Flag Mode</button>
-      <button class="primary" data-mode="flag_mcq">🎌 Flag Multiple Choice</button>
-    </div>
-    <div class="controls">
-      <button id="clearStatsBtn">Clear Saved Stats</button>
-      <button id="clearCacheBtn">Clear Cached Assets</button>
-    </div>
-    <div id="menuStatus" class="status"></div>
-  </div>
 
-  <div id="gameView" class="hidden">
-    <div class="card">
-      <div class="topbar">
-        <div id="modeTitle"><h2>Mode</h2></div>
-        <div id="scoreLabel" class="score">Score: 0 / 0</div>
-      </div>
-      <div class="controls" style="justify-content:flex-start">
-        <button id="backBtn">← Back to Menu</button>
-      </div>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h2>Preparing Game...</h2>
+        <div class="loader"></div>
+        <p>Fetching and caching map boundaries. This may take a moment on the first load.</p>
     </div>
 
-    <div id="mapCard" class="card hidden">
-      <div class="map-wrap">
-        <svg id="mapSvg" viewBox="0 0 1000 500" aria-label="World map"></svg>
-      </div>
-      <div class="status">Scroll/pinch to zoom. Drag to pan. Cached after first load.</div>
+    <!-- Main Menu -->
+    <div id="menu-screen" class="hidden">
+        <h1>Country Guessing Game</h1>
+        <p>Select Game Mode</p>
+        <button onclick="startGame('map')">🗺️ Map Mode</button>
+        <button onclick="startGame('islands')">🏝️ Islands Map Mode</button>
+        <button onclick="startGame('flag')">🏁 Flag Mode</button>
+        <button onclick="startGame('flag_mcq')">🎌 Flag Multiple Choice</button>
     </div>
 
-    <div id="flagCard" class="card hidden">
-      <div id="promptLabel" class="prompt hidden"></div>
-      <div class="flag-box">
-        <img id="mainFlag" alt="Country flag" class="hidden" />
-        <div id="flagPlaceholder" class="subtle hidden">[Flag image not available]</div>
-      </div>
-    </div>
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden">
+        <div class="top-bar">
+            <button class="back-btn" onclick="backToMenu()">⬅ Back</button>
+            <span id="score-label">Score: 0 / 0 | Mode</span>
+        </div>
 
-    <div id="choicesCard" class="card hidden">
-      <div id="choices" class="choices"></div>
-      <div id="flagGrid" class="flag-grid hidden"></div>
-      <div id="resultLabel" class="result"></div>
-      <div class="controls">
-        <button id="nextBtn" class="next" disabled>Next Round ➔</button>
-      </div>
+        <!-- Mode specific view elements -->
+        <div id="map-container" class="hidden"></div>
+        
+        <div id="flag-container" class="hidden">
+            <img id="flag-img" src="" alt="Flag" />
+        </div>
+        
+        <div id="prompt-label" class="hidden"></div>
+
+        <!-- Option areas -->
+        <div id="options-area" class="options-grid hidden"></div>
+        <div id="flag-mcq-area" class="flag-mcq-grid hidden"></div>
+
+        <div id="result-label"></div>
+        <button id="next-btn" onclick="nextRound()" disabled>Next Round ➔</button>
     </div>
-  </div>
-</div>
 
 <script>
-(() => {
-  const STATS_IGNORE_CHANCE = 0.5;
-  const WEIGHT_CORRECT_PENALTY = 0.75;
-  const WEIGHT_MISS_BONUS = 1.25;
-  const MIN_CORRECT_GUESSES = 3;
-  const NUM_OPTIONS = 20;
-  const FLAG_MCQ_OPTIONS = 40;
+    // --- Configuration Constants ---
+    const STATS_IGNORE_CHANCE = 0.5;
+    const WEIGHT_CORRECT_PENALTY = 0.75;
+    const WEIGHT_MISS_BONUS = 1.25;
+    const MIN_CORRECT_GUESSES = 3;
+    const NUM_OPTIONS = 20;
+    const FLAG_MCQ_OPTIONS = 40;
+    const CACHE_NAME = 'country-game-cache-v1';
 
-  const ISLAND_AND_CITY_STATE_NAMES = new Set([
-    "Andorra", "Antigua and Barbuda", "Bahamas", "Bahrain", "Barbados", "Cape Verde",
-    "Comoros", "Cuba", "Cyprus", "Dominica", "Dominican Republic", "Fiji", "Grenada",
-    "Haiti", "Iceland", "Indonesia", "Ireland", "Jamaica", "Japan", "Kiribati",
-    "Madagascar", "Maldives", "Malta", "Marshall Islands", "Mauritius", "Micronesia",
-    "Monaco", "Nauru", "New Zealand", "Palau", "Philippines", "Saint Kitts and Nevis",
-    "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "Sao Tome and Principe",
-    "Seychelles", "Singapore", "Solomon Islands", "Sri Lanka", "Timor-Leste", "Tonga",
-    "Trinidad and Tobago", "Tuvalu", "Vanuatu", "Taiwan", "Brunei", "United Kingdom",
-    "Papua New Guinea"
-  ]);
+    const ISLAND_AND_CITY_STATE_NAMES = new Set([
+        "Andorra", "Antigua and Barbuda", "Bahamas", "Bahrain", "Barbados", "Cape Verde",
+        "Comoros", "Cuba", "Cyprus", "Dominica", "Dominican Republic", "Fiji", "Grenada",
+        "Haiti", "Iceland", "Indonesia", "Ireland", "Jamaica", "Japan", "Kiribati",
+        "Madagascar", "Maldives", "Malta", "Marshall Islands", "Mauritius", "Micronesia",
+        "Monaco", "Nauru", "New Zealand", "Palau", "Philippines", "Saint Kitts and Nevis",
+        "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "Sao Tome and Principe",
+        "Seychelles", "Singapore", "Solomon Islands", "Sri Lanka", "Timor-Leste", "Tonga",
+        "Trinidad and Tobago", "Tuvalu", "Vanuatu", "Taiwan", "Brunei", "United Kingdom",
+        "Papua New Guinea"
+    ]);
 
-  const SIMILAR_FLAG_GROUPS = [
-    ["Romania", "Chad", "Andorra", "Moldova"],
-    ["Netherlands", "Luxembourg", "Croatia", "Paraguay"],
-    ["Ireland", "Ivory Coast", "India", "Niger"],
-    ["Belgium", "Germany", "Romania"],
-    ["France", "Italy", "Ireland", "Mexico"],
-    ["Russia", "Slovakia", "Slovenia", "Serbia", "Croatia", "Netherlands", "Luxembourg"],
-    ["Norway", "Iceland", "Finland", "Sweden", "Denmark"],
-    ["Australia", "New Zealand", "Fiji", "Tuvalu"],
-    ["Indonesia", "Monaco", "Poland"],
-    ["Mali", "Guinea", "Senegal", "Cameroon", "Ghana", "Benin"],
-    ["Yemen", "Syria", "Iraq", "Egypt"],
-    ["United Arab Emirates", "Jordan", "Sudan", "Palestine", "Kuwait"],
-    ["Qatar", "Bahrain"],
-    ["Austria", "Latvia"],
-    ["Estonia", "Sierra Leone"],
-    ["Armenia", "Colombia", "Ecuador", "Venezuela"],
-    ["Lithuania", "Bolivia", "Gabon"],
-    ["Hungary", "Bulgaria", "Iran"],
-    ["Moldova", "Romania", "Andorra", "Chad"],
-    ["Czechia", "Czech Republic", "Slovakia", "Slovenia"],
-    ["El Salvador", "Honduras", "Nicaragua", "Guatemala"],
-    ["Costa Rica", "Thailand", "North Korea"],
-    ["South Africa", "Namibia", "Eswatini", "Lesotho"],
-  ];
+    const SIMILAR_FLAG_GROUPS = [
+        new Set(["Romania", "Chad", "Andorra", "Moldova"]),
+        new Set(["Netherlands", "Luxembourg", "Croatia", "Paraguay"]),
+        new Set(["Ireland", "Ivory Coast", "India", "Niger"]),
+        new Set(["Belgium", "Germany", "Romania"]),
+        new Set(["France", "Italy", "Ireland", "Mexico"]),
+        new Set(["Russia", "Slovakia", "Slovenia", "Serbia", "Croatia", "Netherlands", "Luxembourg"]),
+        new Set(["Norway", "Iceland", "Finland", "Sweden", "Denmark"]),
+        new Set(["Australia", "New Zealand", "Fiji", "Tuvalu"]),
+        new Set(["Indonesia", "Monaco", "Poland"]),
+        new Set(["Mali", "Guinea", "Senegal", "Cameroon", "Ghana", "Benin"]),
+        new Set(["Yemen", "Syria", "Iraq", "Egypt"]),
+        new Set(["United Arab Emirates", "Jordan", "Sudan", "Palestine", "Kuwait"]),
+        new Set(["Qatar", "Bahrain"]),
+        new Set(["Austria", "Latvia"]),
+        new Set(["Estonia", "Sierra Leone"]),
+        new Set(["Armenia", "Colombia", "Ecuador", "Venezuela"]),
+        new Set(["Lithuania", "Bolivia", "Gabon"]),
+        new Set(["Hungary", "Bulgaria", "Iran"]),
+        new Set(["Moldova", "Romania", "Andorra", "Chad"]),
+        new Set(["Czechia", "Czech Republic", "Slovakia", "Slovenia"]),
+        new Set(["El Salvador", "Honduras", "Nicaragua", "Guatemala"]),
+        new Set(["Costa Rica", "Thailand", "North Korea"]),
+        new Set(["South Africa", "Namibia", "Eswatini", "Lesotho"])
+    ];
 
-  const MODE_TITLES = {
-    map: "Map Mode",
-    islands: "Islands Map Mode",
-    flag: "Flag Mode",
-    flag_mcq: "Flag Multiple Choice"
-  };
+    // Matplotlib tab20 colors
+    const TAB20_COLORS = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"];
 
-  const STORAGE_PREFIX = "country_game_";
-  const GEOJSON_URL = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/world-administrative-boundaries/exports/geojson?lang=en&timezone=UTC";
-  const CACHE_NAME = "country-guessing-game-cache-v1";
+    // Mapping ISO3 to ISO2 (FlagCDN uses lowercase ISO2)
+    const ISO3_TO_ISO2 = {"AFG":"af","ALA":"ax","ALB":"al","DZA":"dz","ASM":"as","AND":"ad","AGO":"ao","AIA":"ai","ATA":"aq","ATG":"ag","ARG":"ar","ARM":"am","ABW":"aw","AUS":"au","AUT":"at","AZE":"az","BHS":"bs","BHR":"bh","BGD":"bd","BRB":"bb","BLR":"by","BEL":"be","BLZ":"bz","BEN":"bj","BMU":"bm","BTN":"bt","BOL":"bo","BIH":"ba","BWA":"bw","BVT":"bv","BRA":"br","VGB":"vg","IOT":"io","BRN":"bn","BGR":"bg","BFA":"bf","BDI":"bi","KHM":"kh","CMR":"cm","CAN":"ca","CPV":"cv","CYM":"ky","CAF":"cf","TCD":"td","CHL":"cl","CHN":"cn","HKG":"hk","MAC":"mo","CXR":"cx","CCK":"cc","COL":"co","COM":"km","COG":"cg","COD":"cd","COK":"ck","CRI":"cr","CIV":"ci","HRV":"hr","CUB":"cu","CYP":"cy","CZE":"cz","DNK":"dk","DJI":"dj","DMA":"dm","DOM":"do","ECU":"ec","EGY":"eg","SLV":"sv","GNQ":"gq","ERI":"er","EST":"ee","ETH":"et","FLK":"fk","FRO":"fo","FJI":"fj","FIN":"fi","FRA":"fr","GUF":"gf","PYF":"pf","ATF":"tf","GAB":"ga","GMB":"gm","GEO":"ge","DEU":"de","GHA":"gh","GIB":"gi","GRC":"gr","GRL":"gl","GRD":"gd","GLP":"gp","GUM":"gu","GTM":"gt","GGY":"gg","GIN":"gn","GNB":"gw","GUY":"gy","HTI":"ht","HMD":"hm","VAT":"va","HND":"hn","HUN":"hu","ISL":"is","IND":"in","IDN":"id","IRN":"ir","IRQ":"iq","IRL":"ie","IMN":"im","ISR":"il","ITA":"it","JAM":"jm","JPN":"jp","JEY":"je","JOR":"jo","KAZ":"kz","KEN":"ke","KIR":"ki","PRK":"kp","KOR":"kr","KWT":"kw","KGZ":"kg","LAO":"la","LVA":"lv","LBN":"lb","LSO":"ls","LBR":"lr","LBY":"ly","LIE":"li","LTU":"lt","LUX":"lu","MKD":"mk","MDG":"mg","MWI":"mw","MYS":"my","MDV":"mv","MLI":"ml","MLT":"mt","MHL":"mh","MTQ":"mq","MRT":"mr","MUS":"mu","MYT":"yt","MEX":"mx","FSM":"fm","MDA":"md","MCO":"mc","MNG":"mn","MNE":"me","MSR":"ms","MAR":"ma","MOZ":"mz","MMR":"mm","NAM":"na","NRU":"nr","NPL":"np","NLD":"nl","ANT":"an","NCL":"nc","NZL":"nz","NIC":"ni","NER":"ne","NGA":"ng","NIU":"nu","NFK":"nf","MNP":"mp","NOR":"no","OMN":"om","PAK":"pk","PLW":"pw","PSE":"ps","PAN":"pa","PNG":"pg","PRY":"py","PER":"pe","PHL":"ph","PCN":"pn","POL":"pl","PRT":"pt","PRI":"pr","QAT":"qa","REU":"re","ROU":"ro","RUS":"ru","RWA":"rw","BLM":"bl","SHN":"sh","KNA":"kn","LCA":"lc","MAF":"mf","SPM":"pm","VCT":"vc","WSM":"ws","SMR":"sm","STP":"st","SAU":"sa","SEN":"sn","SRB":"rs","SYC":"sc","SLE":"sl","SGP":"sg","SVK":"sk","SVN":"si","SLB":"sb","SOM":"so","ZAF":"za","SGS":"gs","SSD":"ss","ESP":"es","LKA":"lk","SDN":"sd","SUR":"sr","SJM":"sj","SWZ":"sz","SWE":"se","CHE":"ch","SYR":"sy","TWN":"tw","TJK":"tj","TZA":"tz","THA":"th","TLS":"tl","TGO":"tg","TKL":"tk","TON":"to","TTO":"tt","TUN":"tn","TUR":"tr","TKM":"tm","TCA":"tc","TUV":"tv","UGA":"ug","UKR":"ua","ARE":"ae","GBR":"gb","USA":"us","UMI":"um","URY":"uy","UZB":"uz","VUT":"vu","VEN":"ve","VNM":"vn","VIR":"vi","WLF":"wf","ESH":"eh","YEM":"ye","ZMB":"zm","ZWE":"zw"};
 
-  const menuView = document.getElementById("menuView");
-  const gameView = document.getElementById("gameView");
-  const mapCard = document.getElementById("mapCard");
-  const flagCard = document.getElementById("flagCard");
-  const choicesCard = document.getElementById("choicesCard");
-  const modeTitle = document.getElementById("modeTitle");
-  const scoreLabel = document.getElementById("scoreLabel");
-  const resultLabel = document.getElementById("resultLabel");
-  const nextBtn = document.getElementById("nextBtn");
-  const backBtn = document.getElementById("backBtn");
-  const choicesEl = document.getElementById("choices");
-  const flagGrid = document.getElementById("flagGrid");
-  const promptLabel = document.getElementById("promptLabel");
-  const mainFlag = document.getElementById("mainFlag");
-  const flagPlaceholder = document.getElementById("flagPlaceholder");
-  const mapSvg = document.getElementById("mapSvg");
-  const menuStatus = document.getElementById("menuStatus");
-  const clearStatsBtn = document.getElementById("clearStatsBtn");
-  const clearCacheBtn = document.getElementById("clearCacheBtn");
+    // State Variables
+    let worldData = [];
+    let islandsWorldData = [];
+    let currentMode = '';
+    let stats = {};
+    let score = 0;
+    let total = 0;
+    let currentCorrectFeature = null;
 
-  const state = {
-    mode: null,
-    score: 0,
-    total: 0,
-    stats: {},
-    world: [],
-    islandsWorld: [],
-    correctCountry: null,
-    currentChoices: [],
-    zoom: 1,
-    panX: 0,
-    panY: 0,
-    dragging: false,
-    lastX: 0,
-    lastY: 0
-  };
+    // D3 Setup Variables
+    let svg, d3Zoom, pathGen, projection, marker;
 
-  const colorPalette = Array.from({length:20}, (_,i)=>`hsl(${i*18}, 65%, 65%)`);
-
-  document.querySelectorAll("[data-mode]").forEach(btn => {
-    btn.addEventListener("click", () => startGame(btn.dataset.mode));
-  });
-
-  backBtn.addEventListener("click", () => {
-    gameView.classList.add("hidden");
-    menuView.classList.remove("hidden");
-  });
-
-  nextBtn.addEventListener("click", nextRound);
-
-  clearStatsBtn.addEventListener("click", () => {
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith(STORAGE_PREFIX + "stats_")) localStorage.removeItem(k);
-    });
-    menuStatus.textContent = "Saved stats cleared.";
-  });
-
-  clearCacheBtn.addEventListener("click", async () => {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter(k => k.startsWith("country-guessing-game-cache")).map(k => caches.delete(k)));
-      menuStatus.textContent = "Cached assets cleared.";
-    } catch {
-      menuStatus.textContent = "Could not clear cache in this browser.";
-    }
-  });
-
-  function normalizeCountryName(name){
-    const aliases = {
-      "Cabo Verde": "Cape Verde",
-      "Czech Republic": "Czechia"
-    };
-    return aliases[name] || name;
-  }
-
-  function loadStats(mode){
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_PREFIX + "stats_" + mode) || "{}");
-    } catch {
-      return {};
-    }
-  }
-
-  function saveStats(){
-    localStorage.setItem(STORAGE_PREFIX + "stats_" + state.mode, JSON.stringify(state.stats));
-  }
-
-  function updateStats(country, correct){
-    if (!state.stats[country]) state.stats[country] = {correct:0, misses:0};
-    if (correct) state.stats[country].correct++;
-    else state.stats[country].misses++;
-    saveStats();
-  }
-
-  function shuffle(arr){
-    const a = [...arr];
-    for(let i=a.length-1; i>0; i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  function sampleN(arr, n){
-    return shuffle(arr).slice(0, n);
-  }
-
-  function weightedSampleWithoutReplacement(items, n, getWeight){
-    const pool = [...items];
-    const out = [];
-    while (out.length < n && pool.length){
-      const weights = pool.map(getWeight);
-      const total = weights.reduce((a,b)=>a+b,0);
-      let r = Math.random()*total;
-      let idx = 0;
-      for(let i=0;i<pool.length;i++){
-        r -= weights[i];
-        if (r <= 0){
-          idx = i;
-          break;
+    // --- Core Data & Cache Functions ---
+    async function fetchWithCache(url, type = 'json') {
+        const cache = await caches.open(CACHE_NAME);
+        let response = await cache.match(url);
+        if (!response) {
+            response = await fetch(url);
+            if (response.ok) {
+                await cache.put(url, response.clone());
+            } else {
+                return null;
+            }
         }
-      }
-      out.push(pool[idx]);
-      pool.splice(idx,1);
-    }
-    return out;
-  }
-
-  function getActiveWorld(){
-    return state.mode === "islands" ? state.islandsWorld : state.world;
-  }
-
-  function getWeightedCountrySample(n){
-    const activeWorld = getActiveWorld();
-    if (Math.random() < STATS_IGNORE_CHANCE || !Object.keys(state.stats).length || Object.keys(state.stats).length < n){
-      return sampleN(activeWorld, n);
+        if (type === 'json') return response.json();
+        if (type === 'blob') {
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        }
     }
 
-    return weightedSampleWithoutReplacement(activeWorld, n, row => {
-      const country = row.name;
-      let weight = 1.0;
-      if (state.stats[country]){
-        const misses = state.stats[country].misses || 0;
-        const correct = state.stats[country].correct || 0;
-        if (correct > misses && correct >= MIN_CORRECT_GUESSES) weight = WEIGHT_CORRECT_PENALTY;
-        else if (misses > correct) weight = WEIGHT_MISS_BONUS;
-      }
-      return weight;
-    });
-  }
+    async function loadMapData() {
+        const url = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/world-administrative-boundaries/exports/geojson?lang=en&timezone=UTC";
+        try {
+            const data = await fetchWithCache(url, 'json');
+            
+            // Filter out Antarctica and map colors
+            worldData = data.features.filter(f => f.properties.name !== 'Antarctica' && f.properties.iso3);
+            worldData.forEach(f => {
+                f.properties.color_group = Math.floor(Math.random() * 20);
+                // Correct potential naming mismatch
+                if(f.properties.name === "Cabo Verde") f.properties.name = "Cape Verde";
+            });
 
-  async function fetchWithCache(url){
-    if (!("caches" in window)) {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error("Fetch failed");
-      return r;
+            islandsWorldData = worldData.filter(f => ISLAND_AND_CITY_STATE_NAMES.has(f.properties.name));
+
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+        } catch (e) {
+            alert("Failed to load map data. Please check your internet connection and refresh.");
+        }
     }
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(url);
-    if (cached) return cached;
-    const response = await fetch(url, {mode:"cors"});
-    if (!response.ok) throw new Error("Fetch failed: " + url);
-    cache.put(url, response.clone());
-    return response;
-  }
 
-  async function loadMapData(){
-    const response = await fetchWithCache(GEOJSON_URL);
-    const geojson = await response.json();
+    function loadStats() {
+        const stored = localStorage.getItem(`game_stats_${currentMode}`);
+        return stored ? JSON.parse(stored) : {};
+    }
 
-    const features = (geojson.features || [])
-      .filter(f => {
-        const p = f.properties || {};
-        return p.name !== "Antarctica" && p.iso3;
-      })
-      .map((f, i) => {
-        const p = f.properties || {};
-        return {
-          name: normalizeCountryName(p.name),
-          iso3: p.iso3,
-          geometry: f.geometry,
-          colorGroup: i % 20
+    function saveStats() {
+        localStorage.setItem(`game_stats_${currentMode}`, JSON.stringify(stats));
+    }
+
+    function updateStats(country, isCorrect) {
+        if (!stats[country]) stats[country] = { correct: 0, misses: 0 };
+        if (isCorrect) stats[country].correct++;
+        else stats[country].misses++;
+        saveStats();
+    }
+
+    // --- Game Logic ---
+    function startGame(mode) {
+        currentMode = mode;
+        score = 0;
+        total = 0;
+        stats = loadStats();
+
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+
+        // Toggle UI blocks based on mode
+        const isMap = (mode === 'map' || mode === 'islands');
+        const isFlagMcq = (mode === 'flag_mcq');
+        
+        document.getElementById('map-container').classList.toggle('hidden', !isMap);
+        document.getElementById('flag-container').classList.toggle('hidden', isMap || isFlagMcq);
+        document.getElementById('prompt-label').classList.toggle('hidden', !isFlagMcq);
+        
+        document.getElementById('options-area').classList.toggle('hidden', isFlagMcq);
+        document.getElementById('flag-mcq-area').classList.toggle('hidden', !isFlagMcq);
+
+        if (isMap) initD3Map();
+
+        updateScoreLabel();
+        nextRound();
+    }
+
+    function backToMenu() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('menu-screen').classList.remove('hidden');
+    }
+
+    function updateScoreLabel() {
+        const modes = {
+            'map': 'Map Mode',
+            'islands': 'Islands Map',
+            'flag': 'Flag Mode',
+            'flag_mcq': 'Flag Multiple Choice'
         };
-      });
-
-    state.world = features;
-    state.islandsWorld = features
-      .filter(f => ISLAND_AND_CITY_STATE_NAMES.has(f.name))
-      .map((f, i) => ({...f, colorGroup: i % 20}));
-  }
-
-  function lonLatToXY(lon, lat){
-    const x = (lon + 180) * (1000 / 360);
-    const y = (90 - lat) * (500 / 180);
-    return [x, y];
-  }
-
-  function polygonToPath(coords){
-    return coords.map(ring => ring.map((pt, idx) => {
-      const [x,y] = lonLatToXY(pt[0], pt[1]);
-      return `${idx===0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    }).join(" ") + " Z").join(" ");
-  }
-
-  function geometryToPath(geometry){
-    if (!geometry) return "";
-    if (geometry.type === "Polygon"){
-      return polygonToPath(geometry.coordinates);
-    }
-    if (geometry.type === "MultiPolygon"){
-      return geometry.coordinates.map(poly => polygonToPath(poly)).join(" ");
-    }
-    return "";
-  }
-
-  function getCentroidApprox(feature){
-    const coords = [];
-    const g = feature.geometry;
-    if (!g) return [0,0];
-
-    if (g.type === "Polygon"){
-      g.coordinates.flat().forEach(pt => coords.push(pt));
-    } else if (g.type === "MultiPolygon"){
-      g.coordinates.flat(2).forEach(pt => coords.push(pt));
-    }
-    if (!coords.length) return [0,0];
-
-    let lon = 0, lat = 0;
-    coords.forEach(([x,y]) => { lon += x; lat += y; });
-    lon /= coords.length;
-    lat /= coords.length;
-    return [lon, lat];
-  }
-
-  function renderMap(){
-    mapSvg.innerHTML = "";
-    const drawWorld = state.mode === "islands" ? state.world : getActiveWorld();
-
-    const rootGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    rootGroup.setAttribute("id", "mapRoot");
-
-    drawWorld.forEach(country => {
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", geometryToPath(country.geometry));
-      path.setAttribute("fill", colorPalette[country.colorGroup % colorPalette.length]);
-      path.setAttribute("stroke", "#ffffff");
-      path.setAttribute("stroke-width", "0.6");
-      rootGroup.appendChild(path);
-    });
-
-    if (state.correctCountry){
-      const [lon, lat] = getCentroidApprox(state.correctCountry);
-      const [cx, cy] = lonLatToXY(lon, lat);
-      const marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      marker.setAttribute("cx", cx);
-      marker.setAttribute("cy", cy);
-      marker.setAttribute("r", 6);
-      marker.setAttribute("fill", "#ff4444");
-      marker.setAttribute("stroke", "black");
-      marker.setAttribute("stroke-width", "1.5");
-      rootGroup.appendChild(marker);
-
-      applyMapView(lon, lat);
-    } else {
-      rootGroup.setAttribute("transform", `translate(0,0) scale(1)`);
+        document.getElementById('score-label').innerText = `Score: ${score} / ${total} | ${modes[currentMode]}`;
     }
 
-    mapSvg.appendChild(rootGroup);
-  }
-
-  function applyMapView(lon, lat){
-    const mapRoot = document.getElementById("mapRoot");
-    if (!mapRoot) return;
-
-    const [cx, cy] = lonLatToXY(lon, lat);
-    const scale = state.zoom;
-
-    const viewportW = 1000;
-    const viewportH = 500;
-    const tx = viewportW/2 - cx*scale + state.panX;
-    const ty = viewportH/2 - cy*scale + state.panY;
-
-    mapRoot.setAttribute("transform", `translate(${tx},${ty}) scale(${scale})`);
-  }
-
-  mapSvg.addEventListener("wheel", e => {
-    if (!["map","islands"].includes(state.mode) || !state.correctCountry) return;
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.3 : 0.7;
-    state.zoom = Math.max(0.5, Math.min(1000, state.zoom * factor));
-    const [lon, lat] = getCentroidApprox(state.correctCountry);
-    applyMapView(lon, lat);
-  }, {passive:false});
-
-  mapSvg.addEventListener("pointerdown", e => {
-    if (!["map","islands"].includes(state.mode)) return;
-    state.dragging = true;
-    state.lastX = e.clientX;
-    state.lastY = e.clientY;
-    mapSvg.setPointerCapture(e.pointerId);
-  });
-
-  mapSvg.addEventListener("pointermove", e => {
-    if (!state.dragging || !["map","islands"].includes(state.mode) || !state.correctCountry) return;
-    const dx = e.clientX - state.lastX;
-    const dy = e.clientY - state.lastY;
-    state.panX += dx;
-    state.panY += dy;
-    state.lastX = e.clientX;
-    state.lastY = e.clientY;
-    const [lon, lat] = getCentroidApprox(state.correctCountry);
-    applyMapView(lon, lat);
-  });
-
-  mapSvg.addEventListener("pointerup", () => state.dragging = false);
-  mapSvg.addEventListener("pointercancel", () => state.dragging = false);
-
-  async function getFlagUrl(country){
-    const alpha2 = iso3ToIso2(country.iso3);
-    if (!alpha2) return null;
-    return `https://flagcdn.com/w320/${alpha2.toLowerCase()}.png`;
-  }
-
-  const ISO3_TO_ISO2 = {
-    AFG:"AF", ALB:"AL", DZA:"DZ", AND:"AD", AGO:"AO", ATG:"AG", ARG:"AR", ARM:"AM", AUS:"AU", AUT:"AT",
-    AZE:"AZ", BHS:"BS", BHR:"BH", BGD:"BD", BRB:"BB", BLR:"BY", BEL:"BE", BLZ:"BZ", BEN:"BJ", BTN:"BT",
-    BOL:"BO", BIH:"BA", BWA:"BW", BRA:"BR", BRN:"BN", BGR:"BG", BFA:"BF", BDI:"BI", KHM:"KH", CMR:"CM",
-    CAN:"CA", CPV:"CV", CAF:"CF", TCD:"TD", CHL:"CL", CHN:"CN", COL:"CO", COM:"KM", COG:"CG", COD:"CD",
-    CRI:"CR", CIV:"CI", HRV:"HR", CUB:"CU", CYP:"CY", CZE:"CZ", DNK:"DK", DJI:"DJ", DMA:"DM", DOM:"DO",
-    ECU:"EC", EGY:"EG", SLV:"SV", GNQ:"GQ", ERI:"ER", EST:"EE", SWZ:"SZ", ETH:"ET", FJI:"FJ", FIN:"FI",
-    FRA:"FR", GAB:"GA", GMB:"GM", GEO:"GE", DEU:"DE", GHA:"GH", GRC:"GR", GRD:"GD", GTM:"GT", GIN:"GN",
-    GNB:"GW", GUY:"GY", HTI:"HT", HND:"HN", HUN:"HU", ISL:"IS", IND:"IN", IDN:"ID", IRN:"IR", IRQ:"IQ",
-    IRL:"IE", ISR:"IL", ITA:"IT", JAM:"JM", JPN:"JP", JOR:"JO", KAZ:"KZ", KEN:"KE", KIR:"KI", PRK:"KP",
-    KOR:"KR", KWT:"KW", KGZ:"KG", LAO:"LA", LVA:"LV", LBN:"LB", LSO:"LS", LBR:"LR", LBY:"LY", LIE:"LI",
-    LTU:"LT", LUX:"LU", MDG:"MG", MWI:"MW", MYS:"MY", MDV:"MV", MLI:"ML", MLT:"MT", MHL:"MH", MRT:"MR",
-    MUS:"MU", MEX:"MX", FSM:"FM", MDA:"MD", MCO:"MC", MNG:"MN", MNE:"ME", MAR:"MA", MOZ:"MZ", MMR:"MM",
-    NAM:"NA", NRU:"NR", NPL:"NP", NLD:"NL", NZL:"NZ", NIC:"NI", NER:"NE", NGA:"NG", MKD:"MK", NOR:"NO",
-    OMN:"OM", PAK:"PK", PLW:"PW", PAN:"PA", PNG:"PG", PRY:"PY", PER:"PE", PHL:"PH", POL:"PL", PRT:"PT",
-    QAT:"QA", ROU:"RO", RUS:"RU", RWA:"RW", KNA:"KN", LCA:"LC", VCT:"VC", WSM:"WS", SMR:"SM", STP:"ST",
-    SAU:"SA", SEN:"SN", SRB:"RS", SYC:"SC", SLE:"SL", SGP:"SG", SVK:"SK", SVN:"SI", SLB:"SB", SOM:"SO",
-    ZAF:"ZA", SSD:"SS", ESP:"ES", LKA:"LK", SDN:"SD", SUR:"SR", SWE:"SE", CHE:"CH", SYR:"SY", TWN:"TW",
-    TJK:"TJ", TZA:"TZ", THA:"TH", TLS:"TL", TGO:"TG", TON:"TO", TTO:"TT", TUN:"TN", TUR:"TR", TKM:"TM",
-    TUV:"TV", UGA:"UG", UKR:"UA", ARE:"AE", GBR:"GB", USA:"US", URY:"UY", UZB:"UZ", VUT:"VU", VAT:"VA",
-    VEN:"VE", VNM:"VN", YEM:"YE", ZMB:"ZM", ZWE:"ZW", PSE:"PS", XKX:"XK"
-  };
-
-  function iso3ToIso2(iso3){
-    return ISO3_TO_ISO2[iso3] || null;
-  }
-
-  async function showFlag(country){
-    const url = await getFlagUrl(country);
-    if (!url){
-      mainFlag.classList.add("hidden");
-      flagPlaceholder.classList.remove("hidden");
-      return;
+    function getActiveWorld() {
+        return currentMode === 'islands' ? islandsWorldData : worldData;
     }
 
-    try{
-      const response = await fetchWithCache(url);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      mainFlag.src = objectUrl;
-      mainFlag.classList.remove("hidden");
-      flagPlaceholder.classList.add("hidden");
-    }catch{
-      mainFlag.classList.add("hidden");
-      flagPlaceholder.classList.remove("hidden");
-    }
-  }
-
-  function updateScoreLabel(){
-    scoreLabel.textContent = `Score: ${state.score} / ${state.total} | ${MODE_TITLES[state.mode]}`;
-  }
-
-  function resetRoundUI(){
-    resultLabel.textContent = "";
-    resultLabel.className = "result";
-    nextBtn.disabled = true;
-    choicesEl.innerHTML = "";
-    flagGrid.innerHTML = "";
-    promptLabel.textContent = "";
-    promptLabel.classList.add("hidden");
-    mainFlag.classList.add("hidden");
-    flagPlaceholder.classList.add("hidden");
-    state.zoom = 1;
-    state.panX = 0;
-    state.panY = 0;
-  }
-
-  async function startGame(mode){
-    state.mode = mode;
-    state.score = 0;
-    state.total = 0;
-    state.stats = loadStats(mode);
-    updateScoreLabel();
-
-    modeTitle.innerHTML = `<h2>${MODE_TITLES[mode]}</h2>`;
-
-    menuView.classList.add("hidden");
-    gameView.classList.remove("hidden");
-
-    mapCard.classList.toggle("hidden", !["map","islands"].includes(mode));
-    flagCard.classList.toggle("hidden", !(mode === "flag" || mode === "flag_mcq"));
-    choicesCard.classList.remove("hidden");
-
-    if (!state.world.length){
-      resultLabel.textContent = "Loading map data...";
-      try{
-        await loadMapData();
-      }catch(err){
-        resultLabel.textContent = "Failed to load world map data. Online access may be required on first run.";
-        resultLabel.className = "result red";
-        console.error(err);
-        return;
-      }
-    }
-
-    await nextRound();
-  }
-
-  function updateChoiceButtons(choiceRecords){
-    choicesEl.innerHTML = "";
-    choiceRecords.forEach(record => {
-      const btn = document.createElement("button");
-      btn.textContent = record.name;
-      btn.addEventListener("click", () => checkAnswer(record.name, btn));
-      choicesEl.appendChild(btn);
-    });
-  }
-
-  function disableChoiceButtons(){
-    choicesEl.querySelectorAll("button").forEach(b => b.disabled = true);
-    flagGrid.querySelectorAll("button").forEach(b => b.disabled = true);
-  }
-
-  function checkAnswer(guessedName, clickedButton){
-    disableChoiceButtons();
-
-    state.total += 1;
-    const correctName = state.correctCountry.name;
-    const isCorrect = guessedName === correctName;
-
-    if (isCorrect){
-      state.score += 1;
-      clickedButton.style.background = "lightgreen";
-      resultLabel.textContent = `Correct! It is ${correctName}.`;
-      resultLabel.className = "result green";
-    } else {
-      clickedButton.style.background = "salmon";
-      resultLabel.textContent = `Incorrect. The correct answer was ${correctName}.`;
-      resultLabel.className = "result red";
-    }
-
-    updateStats(correctName, isCorrect);
-    updateScoreLabel();
-    nextBtn.disabled = false;
-  }
-
-  function getSimilarCandidates(correctName){
-    const similar = new Set();
-    for (const group of SIMILAR_FLAG_GROUPS){
-      if (group.includes(correctName)){
-        group.forEach(name => similar.add(name));
-      }
-    }
-    similar.delete(correctName);
-    return similar;
-  }
-
-  async function prepareFlagMcqRound(){
-    promptLabel.classList.remove("hidden");
-    const activeWorld = getActiveWorld();
-    state.correctCountry = getWeightedCountrySample(1)[0];
-    const correctName = state.correctCountry.name;
-    promptLabel.textContent = correctName;
-
-    const similarNames = getSimilarCandidates(correctName);
-    const similarRecords = shuffle(activeWorld.filter(r => similarNames.has(r.name) && r.name !== correctName));
-    const otherRecords = shuffle(activeWorld.filter(r => r.name !== correctName && !similarNames.has(r.name)));
-
-    const selected = [state.correctCountry];
-    let needed = FLAG_MCQ_OPTIONS - 1;
-
-    selected.push(...similarRecords.slice(0, needed));
-    needed = FLAG_MCQ_OPTIONS - selected.length;
-    if (needed > 0) selected.push(...otherRecords.slice(0, needed));
-
-    const finalSelected = shuffle(selected).slice(0, FLAG_MCQ_OPTIONS);
-
-    flagGrid.classList.remove("hidden");
-    choicesEl.classList.add("hidden");
-    flagGrid.innerHTML = "";
-
-    for (const record of finalSelected){
-      const btn = document.createElement("button");
-      btn.className = "flag-choice";
-      btn.dataset.countryName = record.name;
-
-      const img = document.createElement("img");
-      img.alt = record.name + " flag";
-
-      try{
-        const url = await getFlagUrl(record);
-        if (url){
-          const response = await fetchWithCache(url);
-          const blob = await response.blob();
-          img.src = URL.createObjectURL(blob);
+    function getWeightedSample(n) {
+        const activeWorld = getActiveWorld();
+        if (Math.random() < STATS_IGNORE_CHANCE || Object.keys(stats).length < n) {
+            return d3.shuffle([...activeWorld]).slice(0, n);
         }
-      }catch{
-        img.alt = "Flag unavailable";
-      }
 
-      btn.appendChild(img);
-      btn.addEventListener("click", () => checkFlagMcqAnswer(record.name, btn));
-      flagGrid.appendChild(btn);
-    }
-  }
+        let pool = activeWorld.map(f => {
+            const name = f.properties.name;
+            let weight = 1.0;
+            if (stats[name]) {
+                const { correct = 0, misses = 0 } = stats[name];
+                if (correct > misses && correct >= MIN_CORRECT_GUESSES) weight = WEIGHT_CORRECT_PENALTY;
+                else if (misses > correct) weight = WEIGHT_MISS_BONUS;
+            }
+            return { feature: f, weight: weight };
+        });
 
-  function checkFlagMcqAnswer(guessedName, clickedButton){
-    disableChoiceButtons();
-
-    state.total += 1;
-    const correctName = state.correctCountry.name;
-    const isCorrect = guessedName === correctName;
-
-    if (isCorrect){
-      state.score += 1;
-      clickedButton.style.background = "lightgreen";
-      resultLabel.textContent = `Correct! That flag is ${correctName}.`;
-      resultLabel.className = "result green";
-    } else {
-      clickedButton.style.background = "salmon";
-      resultLabel.textContent = `Incorrect. The correct answer was ${correctName}.`;
-      resultLabel.className = "result red";
-      [...flagGrid.querySelectorAll("button")].forEach(btn => {
-        if (btn.dataset.countryName === correctName) btn.style.background = "lightgreen";
-      });
+        let selected = [];
+        for (let i = 0; i < n && pool.length > 0; i++) {
+            let totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+            let r = Math.random() * totalWeight;
+            let sum = 0;
+            for (let j = 0; j < pool.length; j++) {
+                sum += pool[j].weight;
+                if (r <= sum) {
+                    selected.push(pool[j].feature);
+                    pool.splice(j, 1);
+                    break;
+                }
+            }
+        }
+        return selected;
     }
 
-    updateStats(correctName, isCorrect);
-    updateScoreLabel();
-    nextBtn.disabled = false;
-  }
+    async function nextRound() {
+        document.getElementById('result-label').innerText = "";
+        document.getElementById('next-btn').disabled = true;
 
-  async function nextRound(){
-    resetRoundUI();
+        if (currentMode === 'flag_mcq') {
+            await prepareFlagMcqRound();
+            return;
+        }
 
-    if (state.mode === "flag_mcq"){
-      await prepareFlagMcqRound();
-      return;
+        // Setup standard modes
+        const choices = getWeightedSample(NUM_OPTIONS);
+        currentCorrectFeature = choices[0];
+        d3.shuffle(choices);
+
+        if (currentMode === 'map' || currentMode === 'islands') {
+            renderMap(currentCorrectFeature);
+        } else if (currentMode === 'flag') {
+            await showFlag(currentCorrectFeature);
+        }
+
+        renderOptionsArea(choices);
     }
 
-    choicesEl.classList.remove("hidden");
-    flagGrid.classList.add("hidden");
+    // --- D3 Map Handling ---
+    function initD3Map() {
+        const container = document.getElementById('map-container');
+        container.innerHTML = '';
+        
+        svg = d3.select(container).append('svg');
+        const g = svg.append('g');
 
-    const choiceRecords = getWeightedCountrySample(NUM_OPTIONS);
-    state.correctCountry = choiceRecords[0];
-    const shuffled = shuffle(choiceRecords);
+        projection = d3.geoMercator().scale(1).translate([0,0]);
+        pathGen = d3.geoPath().projection(projection);
 
-    if (["map","islands"].includes(state.mode)){
-      renderMap();
+        d3Zoom = d3.zoom()
+            .scaleExtent([0.5, 50])
+            .on('zoom', (e) => g.attr('transform', e.transform));
+        
+        svg.call(d3Zoom);
+
+        // Draw context map (all countries)
+        g.selectAll('.country')
+            .data(worldData)
+            .enter().append('path')
+            .attr('class', 'country')
+            .style('fill', d => TAB20_COLORS[d.properties.color_group])
+            .style('stroke', 'var(--border-color)')
+            .style('stroke-width', 0.5);
+
+        marker = g.append('circle')
+            .attr('r', 6)
+            .attr('fill', 'var(--marker-color)')
+            .attr('stroke', 'black')
+            .attr('stroke-width', 1)
+            .style('display', 'none');
     }
 
-    if (state.mode === "flag"){
-      await showFlag(state.correctCountry);
-    } else {
-      mainFlag.classList.add("hidden");
-      flagPlaceholder.classList.add("hidden");
+    function renderMap(targetFeature) {
+        const container = document.getElementById('map-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        projection.fitSize([width, height], { type: "FeatureCollection", features: worldData });
+        svg.selectAll('.country').attr('d', pathGen);
+
+        const centroid = pathGen.centroid(targetFeature);
+        marker.attr('cx', centroid[0])
+              .attr('cy', centroid[1])
+              .style('display', 'block');
+
+        // Zoom logic
+        const bounds = pathGen.bounds(targetFeature);
+        const dx = bounds[1][0] - bounds[0][0];
+        const dy = bounds[1][1] - bounds[0][1];
+        const maxScale = 12;
+        const scale = Math.max(1, Math.min(maxScale, 0.6 / Math.max(dx / width, dy / height)));
+        
+        const translate = [width / 2 - scale * centroid[0], height / 2 - scale * centroid[1]];
+
+        svg.transition()
+           .duration(750)
+           .call(d3Zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
     }
 
-    updateChoiceButtons(shuffled);
-  }
-})();
+    // --- Flag Loading ---
+    async function getFlagUrl(iso3) {
+        const iso2 = ISO3_TO_ISO2[iso3];
+        if (!iso2) return null;
+        const url = `https://flagcdn.com/w320/${iso2}.png`;
+        const cachedBlob = await fetchWithCache(url, 'blob');
+        return cachedBlob;
+    }
+
+    async function showFlag(feature) {
+        const img = document.getElementById('flag-img');
+        img.src = ""; // Clear
+        const url = await getFlagUrl(feature.properties.iso3);
+        if (url) {
+            img.src = url;
+            img.alt = `Flag of ${feature.properties.name}`;
+        } else {
+            img.alt = "[Flag Image Not Available]";
+        }
+    }
+
+    // --- UI Renderers & Checking ---
+    function renderOptionsArea(choices) {
+        const area = document.getElementById('options-area');
+        area.innerHTML = '';
+        
+        choices.forEach(c => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = c.properties.name;
+            btn.onclick = () => checkAnswer(c.properties.name, btn, choices);
+            area.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(guessedName, clickedBtn, allChoices) {
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.disabled = true);
+
+        total++;
+        const correctName = currentCorrectFeature.properties.name;
+        const isCorrect = (guessedName === correctName);
+
+        if (isCorrect) {
+            score++;
+            clickedBtn.classList.add('correct');
+            document.getElementById('result-label').innerText = `Correct! It is ${correctName}.`;
+            document.getElementById('result-label').style.color = "green";
+        } else {
+            clickedBtn.classList.add('incorrect');
+            document.getElementById('result-label').innerText = `Incorrect. The correct answer was ${correctName}.`;
+            document.getElementById('result-label').style.color = "red";
+            // Highlight correct one
+            btns.forEach(b => {
+                if (b.innerText === correctName) b.classList.add('correct');
+            });
+        }
+
+        updateStats(correctName, isCorrect);
+        updateScoreLabel();
+        document.getElementById('next-btn').disabled = false;
+    }
+
+    // --- Flag MCQ Handling ---
+    function getSimilarCandidates(correctName) {
+        let similar = new Set();
+        SIMILAR_FLAG_GROUPS.forEach(group => {
+            if (group.has(correctName)) {
+                group.forEach(v => similar.add(v));
+            }
+        });
+        similar.delete(correctName);
+        return Array.from(similar);
+    }
+
+    async function prepareFlagMcqRound() {
+        const activeWorld = getActiveWorld();
+        currentCorrectFeature = getWeightedSample(1)[0];
+        const correctName = currentCorrectFeature.properties.name;
+
+        document.getElementById('prompt-label').innerText = correctName;
+        const area = document.getElementById('flag-mcq-area');
+        area.innerHTML = '<div style="grid-column: 1/-1;">Loading flags...</div>';
+
+        // Distractors
+        const similarNames = getSimilarCandidates(correctName);
+        let similarRecords = activeWorld.filter(f => similarNames.includes(f.properties.name));
+        let otherRecords = activeWorld.filter(f => f.properties.name !== correctName && !similarNames.includes(f.properties.name));
+        
+        d3.shuffle(similarRecords);
+        d3.shuffle(otherRecords);
+
+        let selected = [currentCorrectFeature];
+        let needed = FLAG_MCQ_OPTIONS - 1;
+
+        selected.push(...similarRecords.slice(0, needed));
+        needed = FLAG_MCQ_OPTIONS - selected.length;
+        if (needed > 0) {
+            selected.push(...otherRecords.slice(0, needed));
+        }
+        
+        d3.shuffle(selected);
+
+        // Preload flag blobs concurrently
+        const flagPromises = selected.map(async (feature) => {
+            const blobUrl = await getFlagUrl(feature.properties.iso3);
+            return { feature, blobUrl };
+        });
+
+        const flagData = await Promise.all(flagPromises);
+
+        area.innerHTML = '';
+        flagData.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'flag-btn';
+            
+            const img = document.createElement('img');
+            img.src = item.blobUrl || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent fallback
+            
+            btn.appendChild(img);
+            btn.onclick = () => checkFlagMcqAnswer(item.feature.properties.name, btn);
+            btn.dataset.name = item.feature.properties.name;
+            area.appendChild(btn);
+        });
+    }
+
+    function checkFlagMcqAnswer(guessedName, clickedBtn) {
+        const btns = document.querySelectorAll('.flag-btn');
+        btns.forEach(b => b.disabled = true);
+
+        total++;
+        const correctName = currentCorrectFeature.properties.name;
+        const isCorrect = (guessedName === correctName);
+
+        if (isCorrect) {
+            score++;
+            clickedBtn.classList.add('correct');
+            document.getElementById('result-label').innerText = `Correct! That flag is ${correctName}.`;
+            document.getElementById('result-label').style.color = "green";
+        } else {
+            clickedBtn.classList.add('incorrect');
+            document.getElementById('result-label').innerText = `Incorrect. The correct answer was ${correctName}.`;
+            document.getElementById('result-label').style.color = "red";
+            btns.forEach(b => {
+                if (b.dataset.name === correctName) b.classList.add('correct');
+            });
+        }
+
+        updateStats(correctName, isCorrect);
+        updateScoreLabel();
+        document.getElementById('next-btn').disabled = false;
+    }
+
+    // Startup
+    window.onload = loadMapData;
+
 </script>
 </body>
 </html>
