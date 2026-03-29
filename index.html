@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Country Guessing Game</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --ocean-color: #aadaff;
+            --border-color: #ffffff;
+            --marker-color: #ff4444;
+            --bg-color: #f4f4f9;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Container Styles */
+        #loading-screen, #menu-screen, #game-screen {
+            width: 100%;
+            max-width: 1100px;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        #menu-screen { margin-top: 50px; }
+        #menu-screen button {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 15px auto;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background-color: white;
+            transition: background-color 0.2s;
+        }
+        #menu-screen button:hover { background-color: #e0e0e0; }
+
+        /* Game Header */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .back-btn {
+            background: #ccc;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Interactive Elements */
+        #map-container {
+            width: 100%;
+            height: 50vh;
+            background-color: var(--ocean-color);
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            position: relative;
+            touch-action: none; /* Crucial for mobile zooming/panning */
+        }
+        
+        svg { width: 100%; height: 100%; cursor: grab; }
+        svg:active { cursor: grabbing; }
+
+        #flag-container { margin: 20px 0; }
+        #flag-container img { max-width: 250px; max-height: 150px; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        #prompt-label { font-size: 24px; font-weight: bold; margin: 15px 0; }
+
+        /* Grids */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .flag-mcq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        button.option-btn {
+            padding: 12px 5px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+            background-color: white;
+            transition: transform 0.1s;
+        }
+        button.option-btn:active { transform: scale(0.97); }
+        button.option-btn:disabled { cursor: not-allowed; opacity: 0.9; }
+
+        button.flag-btn {
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            background-color: #fff;
+        }
+        button.flag-btn img {
+            width: 100px;
+            height: 70px;
+            object-fit: contain;
+        }
+
+        /* Result & Next */
+        #result-label { font-size: 20px; font-weight: bold; margin: 15px 0; min-height: 24px; }
+        #next-btn {
+            font-size: 18px; font-weight: bold;
+            background-color: #4CAF50; color: white;
+            border: none; padding: 12px 24px;
+            border-radius: 8px; cursor: pointer;
+        }
+        #next-btn:disabled { background-color: #9E9E9E; cursor: not-allowed; }
+
+        .correct { background-color: lightgreen !important; border-color: green !important; }
+        .incorrect { background-color: salmon !important; border-color: red !important; }
+
+        /* Loader */
+        .loader {
+            border: 6px solid #f3f3f3; border-top: 6px solid #3498db;
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite; margin: 30px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h2>Preparing Game...</h2>
+        <div class="loader"></div>
+        <p>Fetching and caching map boundaries. This may take a moment on the first load.</p>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="menu-screen" class="hidden">
+        <h1>Country Guessing Game</h1>
+        <p>Select Game Mode</p>
+        <button onclick="startGame('map')">🗺️ Map Mode</button>
+        <button onclick="startGame('islands')">🏝️ Islands Map Mode</button>
+        <button onclick="startGame('flag')">🏁 Flag Mode</button>
+        <button onclick="startGame('flag_mcq')">🎌 Flag Multiple Choice</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden">
+        <div class="top-bar">
+            <button class="back-btn" onclick="backToMenu()">⬅ Back</button>
+            <span id="score-label">Score: 0 / 0 | Mode</span>
+        </div>
+
+        <!-- Mode specific view elements -->
+        <div id="map-container" class="hidden"></div>
+        
+        <div id="flag-container" class="hidden">
+            <img id="flag-img" src="" alt="Flag" />
+        </div>
+        
+        <div id="prompt-label" class="hidden"></div>
+
+        <!-- Option areas -->
+        <div id="options-area" class="options-grid hidden"></div>
+        <div id="flag-mcq-area" class="flag-mcq-grid hidden"></div>
+
+        <div id="result-label"></div>
+        <button id="next-btn" onclick="nextRound()" disabled>Next Round ➔</button>
+    </div>
+
+<script>
+    // --- Configuration Constants ---
+    const STATS_IGNORE_CHANCE = 0.5;
+    const WEIGHT_CORRECT_PENALTY = 0.75;
+    const WEIGHT_MISS_BONUS = 1.25;
+    const MIN_CORRECT_GUESSES = 3;
+    const NUM_OPTIONS = 20;
+    const FLAG_MCQ_OPTIONS = 40;
+    const CACHE_NAME = 'country-game-cache-v1';
+
+    const ISLAND_AND_CITY_STATE_NAMES = new Set([
+        "Andorra", "Antigua and Barbuda", "Bahamas", "Bahrain", "Barbados", "Cape Verde",
+        "Comoros", "Cuba", "Cyprus", "Dominica", "Dominican Republic", "Fiji", "Grenada",
+        "Haiti", "Iceland", "Indonesia", "Ireland", "Jamaica", "Japan", "Kiribati",
+        "Madagascar", "Maldives", "Malta", "Marshall Islands", "Mauritius", "Micronesia",
+        "Monaco", "Nauru", "New Zealand", "Palau", "Philippines", "Saint Kitts and Nevis",
+        "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "Sao Tome and Principe",
+        "Seychelles", "Singapore", "Solomon Islands", "Sri Lanka", "Timor-Leste", "Tonga",
+        "Trinidad and Tobago", "Tuvalu", "Vanuatu", "Taiwan", "Brunei", "United Kingdom",
+        "Papua New Guinea"
+    ]);
+
+    const SIMILAR_FLAG_GROUPS = [
+        new Set(["Romania", "Chad", "Andorra", "Moldova"]),
+        new Set(["Netherlands", "Luxembourg", "Croatia", "Paraguay"]),
+        new Set(["Ireland", "Ivory Coast", "India", "Niger"]),
+        new Set(["Belgium", "Germany", "Romania"]),
+        new Set(["France", "Italy", "Ireland", "Mexico"]),
+        new Set(["Russia", "Slovakia", "Slovenia", "Serbia", "Croatia", "Netherlands", "Luxembourg"]),
+        new Set(["Norway", "Iceland", "Finland", "Sweden", "Denmark"]),
+        new Set(["Australia", "New Zealand", "Fiji", "Tuvalu"]),
+        new Set(["Indonesia", "Monaco", "Poland"]),
+        new Set(["Mali", "Guinea", "Senegal", "Cameroon", "Ghana", "Benin"]),
+        new Set(["Yemen", "Syria", "Iraq", "Egypt"]),
+        new Set(["United Arab Emirates", "Jordan", "Sudan", "Palestine", "Kuwait"]),
+        new Set(["Qatar", "Bahrain"]),
+        new Set(["Austria", "Latvia"]),
+        new Set(["Estonia", "Sierra Leone"]),
+        new Set(["Armenia", "Colombia", "Ecuador", "Venezuela"]),
+        new Set(["Lithuania", "Bolivia", "Gabon"]),
+        new Set(["Hungary", "Bulgaria", "Iran"]),
+        new Set(["Moldova", "Romania", "Andorra", "Chad"]),
+        new Set(["Czechia", "Czech Republic", "Slovakia", "Slovenia"]),
+        new Set(["El Salvador", "Honduras", "Nicaragua", "Guatemala"]),
+        new Set(["Costa Rica", "Thailand", "North Korea"]),
+        new Set(["South Africa", "Namibia", "Eswatini", "Lesotho"])
+    ];
+
+    // Matplotlib tab20 colors
+    const TAB20_COLORS = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"];
+
+    // Mapping ISO3 to ISO2 (FlagCDN uses lowercase ISO2)
+    const ISO3_TO_ISO2 = {"AFG":"af","ALA":"ax","ALB":"al","DZA":"dz","ASM":"as","AND":"ad","AGO":"ao","AIA":"ai","ATA":"aq","ATG":"ag","ARG":"ar","ARM":"am","ABW":"aw","AUS":"au","AUT":"at","AZE":"az","BHS":"bs","BHR":"bh","BGD":"bd","BRB":"bb","BLR":"by","BEL":"be","BLZ":"bz","BEN":"bj","BMU":"bm","BTN":"bt","BOL":"bo","BIH":"ba","BWA":"bw","BVT":"bv","BRA":"br","VGB":"vg","IOT":"io","BRN":"bn","BGR":"bg","BFA":"bf","BDI":"bi","KHM":"kh","CMR":"cm","CAN":"ca","CPV":"cv","CYM":"ky","CAF":"cf","TCD":"td","CHL":"cl","CHN":"cn","HKG":"hk","MAC":"mo","CXR":"cx","CCK":"cc","COL":"co","COM":"km","COG":"cg","COD":"cd","COK":"ck","CRI":"cr","CIV":"ci","HRV":"hr","CUB":"cu","CYP":"cy","CZE":"cz","DNK":"dk","DJI":"dj","DMA":"dm","DOM":"do","ECU":"ec","EGY":"eg","SLV":"sv","GNQ":"gq","ERI":"er","EST":"ee","ETH":"et","FLK":"fk","FRO":"fo","FJI":"fj","FIN":"fi","FRA":"fr","GUF":"gf","PYF":"pf","ATF":"tf","GAB":"ga","GMB":"gm","GEO":"ge","DEU":"de","GHA":"gh","GIB":"gi","GRC":"gr","GRL":"gl","GRD":"gd","GLP":"gp","GUM":"gu","GTM":"gt","GGY":"gg","GIN":"gn","GNB":"gw","GUY":"gy","HTI":"ht","HMD":"hm","VAT":"va","HND":"hn","HUN":"hu","ISL":"is","IND":"in","IDN":"id","IRN":"ir","IRQ":"iq","IRL":"ie","IMN":"im","ISR":"il","ITA":"it","JAM":"jm","JPN":"jp","JEY":"je","JOR":"jo","KAZ":"kz","KEN":"ke","KIR":"ki","PRK":"kp","KOR":"kr","KWT":"kw","KGZ":"kg","LAO":"la","LVA":"lv","LBN":"lb","LSO":"ls","LBR":"lr","LBY":"ly","LIE":"li","LTU":"lt","LUX":"lu","MKD":"mk","MDG":"mg","MWI":"mw","MYS":"my","MDV":"mv","MLI":"ml","MLT":"mt","MHL":"mh","MTQ":"mq","MRT":"mr","MUS":"mu","MYT":"yt","MEX":"mx","FSM":"fm","MDA":"md","MCO":"mc","MNG":"mn","MNE":"me","MSR":"ms","MAR":"ma","MOZ":"mz","MMR":"mm","NAM":"na","NRU":"nr","NPL":"np","NLD":"nl","ANT":"an","NCL":"nc","NZL":"nz","NIC":"ni","NER":"ne","NGA":"ng","NIU":"nu","NFK":"nf","MNP":"mp","NOR":"no","OMN":"om","PAK":"pk","PLW":"pw","PSE":"ps","PAN":"pa","PNG":"pg","PRY":"py","PER":"pe","PHL":"ph","PCN":"pn","POL":"pl","PRT":"pt","PRI":"pr","QAT":"qa","REU":"re","ROU":"ro","RUS":"ru","RWA":"rw","BLM":"bl","SHN":"sh","KNA":"kn","LCA":"lc","MAF":"mf","SPM":"pm","VCT":"vc","WSM":"ws","SMR":"sm","STP":"st","SAU":"sa","SEN":"sn","SRB":"rs","SYC":"sc","SLE":"sl","SGP":"sg","SVK":"sk","SVN":"si","SLB":"sb","SOM":"so","ZAF":"za","SGS":"gs","SSD":"ss","ESP":"es","LKA":"lk","SDN":"sd","SUR":"sr","SJM":"sj","SWZ":"sz","SWE":"se","CHE":"ch","SYR":"sy","TWN":"tw","TJK":"tj","TZA":"tz","THA":"th","TLS":"tl","TGO":"tg","TKL":"tk","TON":"to","TTO":"tt","TUN":"tn","TUR":"tr","TKM":"tm","TCA":"tc","TUV":"tv","UGA":"ug","UKR":"ua","ARE":"ae","GBR":"gb","USA":"us","UMI":"um","URY":"uy","UZB":"uz","VUT":"vu","VEN":"ve","VNM":"vn","VIR":"vi","WLF":"wf","ESH":"eh","YEM":"ye","ZMB":"zm","ZWE":"zw"};
+
+    // State Variables
+    let worldData = [];
+    let islandsWorldData = [];
+    let currentMode = '';
+    let stats = {};
+    let score = 0;
+    let total = 0;
+    let currentCorrectFeature = null;
+
+    // D3 Setup Variables
+    let svg, d3Zoom, pathGen, projection, marker;
+
+    // --- Core Data & Cache Functions ---
+    async function fetchWithCache(url, type = 'json') {
+        const cache = await caches.open(CACHE_NAME);
+        let response = await cache.match(url);
+        if (!response) {
+            response = await fetch(url);
+            if (response.ok) {
+                await cache.put(url, response.clone());
+            } else {
+                return null;
+            }
+        }
+        if (type === 'json') return response.json();
+        if (type === 'blob') {
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        }
+    }
+
+    async function loadMapData() {
+        const url = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/world-administrative-boundaries/exports/geojson?lang=en&timezone=UTC";
+        try {
+            const data = await fetchWithCache(url, 'json');
+            
+            // Filter out Antarctica and map colors
+            worldData = data.features.filter(f => f.properties.name !== 'Antarctica' && f.properties.iso3);
+            worldData.forEach(f => {
+                f.properties.color_group = Math.floor(Math.random() * 20);
+                // Correct potential naming mismatch
+                if(f.properties.name === "Cabo Verde") f.properties.name = "Cape Verde";
+            });
+
+            islandsWorldData = worldData.filter(f => ISLAND_AND_CITY_STATE_NAMES.has(f.properties.name));
+
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('menu-screen').classList.remove('hidden');
+        } catch (e) {
+            alert("Failed to load map data. Please check your internet connection and refresh.");
+        }
+    }
+
+    function loadStats() {
+        const stored = localStorage.getItem(`game_stats_${currentMode}`);
+        return stored ? JSON.parse(stored) : {};
+    }
+
+    function saveStats() {
+        localStorage.setItem(`game_stats_${currentMode}`, JSON.stringify(stats));
+    }
+
+    function updateStats(country, isCorrect) {
+        if (!stats[country]) stats[country] = { correct: 0, misses: 0 };
+        if (isCorrect) stats[country].correct++;
+        else stats[country].misses++;
+        saveStats();
+    }
+
+    // --- Game Logic ---
+    function startGame(mode) {
+        currentMode = mode;
+        score = 0;
+        total = 0;
+        stats = loadStats();
+
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+
+        // Toggle UI blocks based on mode
+        const isMap = (mode === 'map' || mode === 'islands');
+        const isFlagMcq = (mode === 'flag_mcq');
+        
+        document.getElementById('map-container').classList.toggle('hidden', !isMap);
+        document.getElementById('flag-container').classList.toggle('hidden', isMap || isFlagMcq);
+        document.getElementById('prompt-label').classList.toggle('hidden', !isFlagMcq);
+        
+        document.getElementById('options-area').classList.toggle('hidden', isFlagMcq);
+        document.getElementById('flag-mcq-area').classList.toggle('hidden', !isFlagMcq);
+
+        if (isMap) initD3Map();
+
+        updateScoreLabel();
+        nextRound();
+    }
+
+    function backToMenu() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('menu-screen').classList.remove('hidden');
+    }
+
+    function updateScoreLabel() {
+        const modes = {
+            'map': 'Map Mode',
+            'islands': 'Islands Map',
+            'flag': 'Flag Mode',
+            'flag_mcq': 'Flag Multiple Choice'
+        };
+        document.getElementById('score-label').innerText = `Score: ${score} / ${total} | ${modes[currentMode]}`;
+    }
+
+    function getActiveWorld() {
+        return currentMode === 'islands' ? islandsWorldData : worldData;
+    }
+
+    function getWeightedSample(n) {
+        const activeWorld = getActiveWorld();
+        if (Math.random() < STATS_IGNORE_CHANCE || Object.keys(stats).length < n) {
+            return d3.shuffle([...activeWorld]).slice(0, n);
+        }
+
+        let pool = activeWorld.map(f => {
+            const name = f.properties.name;
+            let weight = 1.0;
+            if (stats[name]) {
+                const { correct = 0, misses = 0 } = stats[name];
+                if (correct > misses && correct >= MIN_CORRECT_GUESSES) weight = WEIGHT_CORRECT_PENALTY;
+                else if (misses > correct) weight = WEIGHT_MISS_BONUS;
+            }
+            return { feature: f, weight: weight };
+        });
+
+        let selected = [];
+        for (let i = 0; i < n && pool.length > 0; i++) {
+            let totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+            let r = Math.random() * totalWeight;
+            let sum = 0;
+            for (let j = 0; j < pool.length; j++) {
+                sum += pool[j].weight;
+                if (r <= sum) {
+                    selected.push(pool[j].feature);
+                    pool.splice(j, 1);
+                    break;
+                }
+            }
+        }
+        return selected;
+    }
+
+    async function nextRound() {
+        document.getElementById('result-label').innerText = "";
+        document.getElementById('next-btn').disabled = true;
+
+        if (currentMode === 'flag_mcq') {
+            await prepareFlagMcqRound();
+            return;
+        }
+
+        // Setup standard modes
+        const choices = getWeightedSample(NUM_OPTIONS);
+        currentCorrectFeature = choices[0];
+        d3.shuffle(choices);
+
+        if (currentMode === 'map' || currentMode === 'islands') {
+            renderMap(currentCorrectFeature);
+        } else if (currentMode === 'flag') {
+            await showFlag(currentCorrectFeature);
+        }
+
+        renderOptionsArea(choices);
+    }
+
+    // --- D3 Map Handling ---
+    function initD3Map() {
+        const container = document.getElementById('map-container');
+        container.innerHTML = '';
+        
+        svg = d3.select(container).append('svg');
+        const g = svg.append('g');
+
+        projection = d3.geoMercator().scale(1).translate([0,0]);
+        pathGen = d3.geoPath().projection(projection);
+
+        d3Zoom = d3.zoom()
+            .scaleExtent([0.5, 50])
+            .on('zoom', (e) => g.attr('transform', e.transform));
+        
+        svg.call(d3Zoom);
+
+        // Draw context map (all countries)
+        g.selectAll('.country')
+            .data(worldData)
+            .enter().append('path')
+            .attr('class', 'country')
+            .style('fill', d => TAB20_COLORS[d.properties.color_group])
+            .style('stroke', 'var(--border-color)')
+            .style('stroke-width', 0.5);
+
+        marker = g.append('circle')
+            .attr('r', 6)
+            .attr('fill', 'var(--marker-color)')
+            .attr('stroke', 'black')
+            .attr('stroke-width', 1)
+            .style('display', 'none');
+    }
+
+    function renderMap(targetFeature) {
+        const container = document.getElementById('map-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        projection.fitSize([width, height], { type: "FeatureCollection", features: worldData });
+        svg.selectAll('.country').attr('d', pathGen);
+
+        const centroid = pathGen.centroid(targetFeature);
+        marker.attr('cx', centroid[0])
+              .attr('cy', centroid[1])
+              .style('display', 'block');
+
+        // Zoom logic
+        const bounds = pathGen.bounds(targetFeature);
+        const dx = bounds[1][0] - bounds[0][0];
+        const dy = bounds[1][1] - bounds[0][1];
+        const maxScale = 12;
+        const scale = Math.max(1, Math.min(maxScale, 0.6 / Math.max(dx / width, dy / height)));
+        
+        const translate = [width / 2 - scale * centroid[0], height / 2 - scale * centroid[1]];
+
+        svg.transition()
+           .duration(750)
+           .call(d3Zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+    }
+
+    // --- Flag Loading ---
+    async function getFlagUrl(iso3) {
+        const iso2 = ISO3_TO_ISO2[iso3];
+        if (!iso2) return null;
+        const url = `https://flagcdn.com/w320/${iso2}.png`;
+        const cachedBlob = await fetchWithCache(url, 'blob');
+        return cachedBlob;
+    }
+
+    async function showFlag(feature) {
+        const img = document.getElementById('flag-img');
+        img.src = ""; // Clear
+        const url = await getFlagUrl(feature.properties.iso3);
+        if (url) {
+            img.src = url;
+            img.alt = `Flag of ${feature.properties.name}`;
+        } else {
+            img.alt = "[Flag Image Not Available]";
+        }
+    }
+
+    // --- UI Renderers & Checking ---
+    function renderOptionsArea(choices) {
+        const area = document.getElementById('options-area');
+        area.innerHTML = '';
+        
+        choices.forEach(c => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = c.properties.name;
+            btn.onclick = () => checkAnswer(c.properties.name, btn, choices);
+            area.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(guessedName, clickedBtn, allChoices) {
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.disabled = true);
+
+        total++;
+        const correctName = currentCorrectFeature.properties.name;
+        const isCorrect = (guessedName === correctName);
+
+        if (isCorrect) {
+            score++;
+            clickedBtn.classList.add('correct');
+            document.getElementById('result-label').innerText = `Correct! It is ${correctName}.`;
+            document.getElementById('result-label').style.color = "green";
+        } else {
+            clickedBtn.classList.add('incorrect');
+            document.getElementById('result-label').innerText = `Incorrect. The correct answer was ${correctName}.`;
+            document.getElementById('result-label').style.color = "red";
+            // Highlight correct one
+            btns.forEach(b => {
+                if (b.innerText === correctName) b.classList.add('correct');
+            });
+        }
+
+        updateStats(correctName, isCorrect);
+        updateScoreLabel();
+        document.getElementById('next-btn').disabled = false;
+    }
+
+    // --- Flag MCQ Handling ---
+    function getSimilarCandidates(correctName) {
+        let similar = new Set();
+        SIMILAR_FLAG_GROUPS.forEach(group => {
+            if (group.has(correctName)) {
+                group.forEach(v => similar.add(v));
+            }
+        });
+        similar.delete(correctName);
+        return Array.from(similar);
+    }
+
+    async function prepareFlagMcqRound() {
+        const activeWorld = getActiveWorld();
+        currentCorrectFeature = getWeightedSample(1)[0];
+        const correctName = currentCorrectFeature.properties.name;
+
+        document.getElementById('prompt-label').innerText = correctName;
+        const area = document.getElementById('flag-mcq-area');
+        area.innerHTML = '<div style="grid-column: 1/-1;">Loading flags...</div>';
+
+        // Distractors
+        const similarNames = getSimilarCandidates(correctName);
+        let similarRecords = activeWorld.filter(f => similarNames.includes(f.properties.name));
+        let otherRecords = activeWorld.filter(f => f.properties.name !== correctName && !similarNames.includes(f.properties.name));
+        
+        d3.shuffle(similarRecords);
+        d3.shuffle(otherRecords);
+
+        let selected = [currentCorrectFeature];
+        let needed = FLAG_MCQ_OPTIONS - 1;
+
+        selected.push(...similarRecords.slice(0, needed));
+        needed = FLAG_MCQ_OPTIONS - selected.length;
+        if (needed > 0) {
+            selected.push(...otherRecords.slice(0, needed));
+        }
+        
+        d3.shuffle(selected);
+
+        // Preload flag blobs concurrently
+        const flagPromises = selected.map(async (feature) => {
+            const blobUrl = await getFlagUrl(feature.properties.iso3);
+            return { feature, blobUrl };
+        });
+
+        const flagData = await Promise.all(flagPromises);
+
+        area.innerHTML = '';
+        flagData.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'flag-btn';
+            
+            const img = document.createElement('img');
+            img.src = item.blobUrl || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent fallback
+            
+            btn.appendChild(img);
+            btn.onclick = () => checkFlagMcqAnswer(item.feature.properties.name, btn);
+            btn.dataset.name = item.feature.properties.name;
+            area.appendChild(btn);
+        });
+    }
+
+    function checkFlagMcqAnswer(guessedName, clickedBtn) {
+        const btns = document.querySelectorAll('.flag-btn');
+        btns.forEach(b => b.disabled = true);
+
+        total++;
+        const correctName = currentCorrectFeature.properties.name;
+        const isCorrect = (guessedName === correctName);
+
+        if (isCorrect) {
+            score++;
+            clickedBtn.classList.add('correct');
+            document.getElementById('result-label').innerText = `Correct! That flag is ${correctName}.`;
+            document.getElementById('result-label').style.color = "green";
+        } else {
+            clickedBtn.classList.add('incorrect');
+            document.getElementById('result-label').innerText = `Incorrect. The correct answer was ${correctName}.`;
+            document.getElementById('result-label').style.color = "red";
+            btns.forEach(b => {
+                if (b.dataset.name === correctName) b.classList.add('correct');
+            });
+        }
+
+        updateStats(correctName, isCorrect);
+        updateScoreLabel();
+        document.getElementById('next-btn').disabled = false;
+    }
+
+    // Startup
+    window.onload = loadMapData;
+
+</script>
+</body>
+</html>
