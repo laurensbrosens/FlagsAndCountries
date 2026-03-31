@@ -173,6 +173,10 @@
         <button onclick="startGame('islands')">🏝️ Islands Map Mode</button>
         <button onclick="startGame('flag')">🏁 Flag Mode</button>
         <button onclick="startGame('flag_mcq')">🎌 Flag Multiple Choice</button>
+        
+        <!-- New Delete Buttons -->
+        <button class="danger-btn" onclick="clearCacheData()">🗑️ Delete Cached Maps/Flags</button>
+        <button class="danger-btn" onclick="clearStatsData()">🗑️ Delete Player Stats</button>
     </div>
 
     <!-- Game Screen -->
@@ -182,7 +186,6 @@
             <span id="score-label">Score: 0 / 0 | Mode</span>
         </div>
 
-        <!-- Mode specific view elements -->
         <div id="map-container" class="hidden"></div>
         
         <div id="flag-container" class="hidden">
@@ -191,7 +194,6 @@
         
         <div id="prompt-label" class="hidden"></div>
 
-        <!-- Option areas -->
         <div id="options-area" class="options-grid hidden"></div>
         <div id="flag-mcq-area" class="flag-mcq-grid hidden"></div>
 
@@ -249,8 +251,6 @@
 
     // Matplotlib tab20 colors
     const TAB20_COLORS = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"];
-
-    // Mapping ISO3 to ISO2 (FlagCDN uses lowercase ISO2)
     const ISO3_TO_ISO2 = {"AFG":"af","ALA":"ax","ALB":"al","DZA":"dz","ASM":"as","AND":"ad","AGO":"ao","AIA":"ai","ATA":"aq","ATG":"ag","ARG":"ar","ARM":"am","ABW":"aw","AUS":"au","AUT":"at","AZE":"az","BHS":"bs","BHR":"bh","BGD":"bd","BRB":"bb","BLR":"by","BEL":"be","BLZ":"bz","BEN":"bj","BMU":"bm","BTN":"bt","BOL":"bo","BIH":"ba","BWA":"bw","BVT":"bv","BRA":"br","VGB":"vg","IOT":"io","BRN":"bn","BGR":"bg","BFA":"bf","BDI":"bi","KHM":"kh","CMR":"cm","CAN":"ca","CPV":"cv","CYM":"ky","CAF":"cf","TCD":"td","CHL":"cl","CHN":"cn","HKG":"hk","MAC":"mo","CXR":"cx","CCK":"cc","COL":"co","COM":"km","COG":"cg","COD":"cd","COK":"ck","CRI":"cr","CIV":"ci","HRV":"hr","CUB":"cu","CYP":"cy","CZE":"cz","DNK":"dk","DJI":"dj","DMA":"dm","DOM":"do","ECU":"ec","EGY":"eg","SLV":"sv","GNQ":"gq","ERI":"er","EST":"ee","ETH":"et","FLK":"fk","FRO":"fo","FJI":"fj","FIN":"fi","FRA":"fr","GUF":"gf","PYF":"pf","ATF":"tf","GAB":"ga","GMB":"gm","GEO":"ge","DEU":"de","GHA":"gh","GIB":"gi","GRC":"gr","GRL":"gl","GRD":"gd","GLP":"gp","GUM":"gu","GTM":"gt","GGY":"gg","GIN":"gn","GNB":"gw","GUY":"gy","HTI":"ht","HMD":"hm","VAT":"va","HND":"hn","HUN":"hu","ISL":"is","IND":"in","IDN":"id","IRN":"ir","IRQ":"iq","IRL":"ie","IMN":"im","ISR":"il","ITA":"it","JAM":"jm","JPN":"jp","JEY":"je","JOR":"jo","KAZ":"kz","KEN":"ke","KIR":"ki","PRK":"kp","KOR":"kr","KWT":"kw","KGZ":"kg","LAO":"la","LVA":"lv","LBN":"lb","LSO":"ls","LBR":"lr","LBY":"ly","LIE":"li","LTU":"lt","LUX":"lu","MKD":"mk","MDG":"mg","MWI":"mw","MYS":"my","MDV":"mv","MLI":"ml","MLT":"mt","MHL":"mh","MTQ":"mq","MRT":"mr","MUS":"mu","MYT":"yt","MEX":"mx","FSM":"fm","MDA":"md","MCO":"mc","MNG":"mn","MNE":"me","MSR":"ms","MAR":"ma","MOZ":"mz","MMR":"mm","NAM":"na","NRU":"nr","NPL":"np","NLD":"nl","ANT":"an","NCL":"nc","NZL":"nz","NIC":"ni","NER":"ne","NGA":"ng","NIU":"nu","NFK":"nf","MNP":"mp","NOR":"no","OMN":"om","PAK":"pk","PLW":"pw","PSE":"ps","PAN":"pa","PNG":"pg","PRY":"py","PER":"pe","PHL":"ph","PCN":"pn","POL":"pl","PRT":"pt","PRI":"pr","QAT":"qa","REU":"re","ROU":"ro","RUS":"ru","RWA":"rw","BLM":"bl","SHN":"sh","KNA":"kn","LCA":"lc","MAF":"mf","SPM":"pm","VCT":"vc","WSM":"ws","SMR":"sm","STP":"st","SAU":"sa","SEN":"sn","SRB":"rs","SYC":"sc","SLE":"sl","SGP":"sg","SVK":"sk","SVN":"si","SLB":"sb","SOM":"so","ZAF":"za","SGS":"gs","SSD":"ss","ESP":"es","LKA":"lk","SDN":"sd","SUR":"sr","SJM":"sj","SWZ":"sz","SWE":"se","CHE":"ch","SYR":"sy","TWN":"tw","TJK":"tj","TZA":"tz","THA":"th","TLS":"tl","TGO":"tg","TKL":"tk","TON":"to","TTO":"tt","TUN":"tn","TUR":"tr","TKM":"tm","TCA":"tc","TUV":"tv","UGA":"ug","UKR":"ua","ARE":"ae","GBR":"gb","USA":"us","UMI":"um","URY":"uy","UZB":"uz","VUT":"vu","VEN":"ve","VNM":"vn","VIR":"vi","WLF":"wf","ESH":"eh","YEM":"ye","ZMB":"zm","ZWE":"zw"};
 
     // State Variables
@@ -264,6 +264,26 @@
 
     // D3 Setup Variables
     let svg, d3Zoom, pathGen, projection, marker;
+
+    // --- Deletion Handlers ---
+    async function clearCacheData() {
+        if (confirm("Are you sure you want to delete all downloaded maps and flags from your device? (They will be re-downloaded next time).")) {
+            await caches.delete(CACHE_NAME);
+            alert("Cache successfully cleared! The page will now reload.");
+            location.reload(); // Reload to start fresh
+        }
+    }
+
+    function clearStatsData() {
+        if (confirm("Are you sure you want to permanently delete all your guessing statistics?")) {
+            localStorage.removeItem('game_stats_map');
+            localStorage.removeItem('game_stats_islands');
+            localStorage.removeItem('game_stats_flag');
+            localStorage.removeItem('game_stats_flag_mcq');
+            stats = {};
+            alert("Player stats successfully cleared!");
+        }
+    }
 
     // --- Core Data & Cache Functions ---
     async function fetchWithCache(url, type = 'json') {
@@ -288,12 +308,9 @@
         const url = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/world-administrative-boundaries/exports/geojson?lang=en&timezone=UTC";
         try {
             const data = await fetchWithCache(url, 'json');
-            
-            // Filter out Antarctica and map colors
             worldData = data.features.filter(f => f.properties.name !== 'Antarctica' && f.properties.iso3);
             worldData.forEach(f => {
                 f.properties.color_group = Math.floor(Math.random() * 20);
-                // Correct potential naming mismatch
                 if(f.properties.name === "Cabo Verde") f.properties.name = "Cape Verde";
             });
 
@@ -332,7 +349,6 @@
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('game-screen').classList.remove('hidden');
 
-        // Toggle UI blocks based on mode
         const isMap = (mode === 'map' || mode === 'islands');
         const isFlagMcq = (mode === 'flag_mcq');
         
@@ -411,8 +427,7 @@
             return;
         }
 
-        // Setup standard modes
-        const choices = getWeightedSample(NUM_OPTIONS);
+        const choices = getWeightedSample(NUM_OPTIONS); // Using Dynamic Mobile Amount
         currentCorrectFeature = choices[0];
         d3.shuffle(choices);
 
@@ -442,7 +457,6 @@
         
         svg.call(d3Zoom);
 
-        // Draw context map (all countries)
         g.selectAll('.country')
             .data(worldData)
             .enter().append('path')
@@ -451,11 +465,12 @@
             .style('stroke', 'var(--border-color)')
             .style('stroke-width', 0.5);
 
+        // Marker drastically reduced in size (radius 2) and thinner stroke
         marker = g.append('circle')
-            .attr('r', 6)
+            .attr('r', 0.5)
             .attr('fill', 'var(--marker-color)')
             .attr('stroke', 'black')
-            .attr('stroke-width', 1)
+            .attr('stroke-width', 0.5)
             .style('display', 'none');
     }
 
@@ -472,7 +487,6 @@
               .attr('cy', centroid[1])
               .style('display', 'block');
 
-        // Zoom logic
         const bounds = pathGen.bounds(targetFeature);
         const dx = bounds[1][0] - bounds[0][0];
         const dy = bounds[1][1] - bounds[0][1];
@@ -497,7 +511,7 @@
 
     async function showFlag(feature) {
         const img = document.getElementById('flag-img');
-        img.src = ""; // Clear
+        img.src = "";
         const url = await getFlagUrl(feature.properties.iso3);
         if (url) {
             img.src = url;
@@ -538,7 +552,6 @@
             clickedBtn.classList.add('incorrect');
             document.getElementById('result-label').innerText = `Incorrect. The correct answer was ${correctName}.`;
             document.getElementById('result-label').style.color = "red";
-            // Highlight correct one
             btns.forEach(b => {
                 if (b.innerText === correctName) b.classList.add('correct');
             });
@@ -570,7 +583,6 @@
         const area = document.getElementById('flag-mcq-area');
         area.innerHTML = '<div style="grid-column: 1/-1;">Loading flags...</div>';
 
-        // Distractors
         const similarNames = getSimilarCandidates(correctName);
         let similarRecords = activeWorld.filter(f => similarNames.includes(f.properties.name));
         let otherRecords = activeWorld.filter(f => f.properties.name !== correctName && !similarNames.includes(f.properties.name));
@@ -589,7 +601,6 @@
         
         d3.shuffle(selected);
 
-        // Preload flag blobs concurrently
         const flagPromises = selected.map(async (feature) => {
             const blobUrl = await getFlagUrl(feature.properties.iso3);
             return { feature, blobUrl };
@@ -603,7 +614,7 @@
             btn.className = 'flag-btn';
             
             const img = document.createElement('img');
-            img.src = item.blobUrl || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; // Transparent fallback
+            img.src = item.blobUrl || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
             
             btn.appendChild(img);
             btn.onclick = () => checkFlagMcqAnswer(item.feature.properties.name, btn);
@@ -639,7 +650,6 @@
         document.getElementById('next-btn').disabled = false;
     }
 
-    // Startup
     window.onload = loadMapData;
 
 </script>
